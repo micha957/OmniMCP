@@ -1,0 +1,9 @@
+# Local runtime data and secrets
+data/accounts.json
+data/profiles/
+data/artifacts/
+.env
+.DS_Store
+/bin/
+/dist/
+*.test

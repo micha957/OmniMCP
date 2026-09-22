@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "OmniMCP Browser Connector",
+  "version": "0.1.0",
+  "description": "Connects a user's visible browser session to a self-hosted OmniMCP server.",
+  "permissions": ["tabs", "activeTab", "storage", "scripting", "cookies"],
+  "host_permissions": ["http://127.0.0.1:8090/*", "http://localhost:8090/*", "<all_urls>"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_title": "OmniMCP", "default_popup": "popup.html" },
+  "content_scripts": [{
+    "matches": ["<all_urls>"],
+    "js": ["content.js"],
+    "run_at": "document_idle"
+  }],
+  "options_page": "options.html"
+}

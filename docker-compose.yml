@@ -1,0 +1,14 @@
+services:
+  omnimcp:
+    build: .
+    ports:
+      - "8090:8090"
+    environment:
+      OMNIMCP_WEB_ADDR: 0.0.0.0:8090
+      OMNIMCP_API_TOKEN: ${OMNIMCP_API_TOKEN:-change-me}
+      OMNIMCP_HEADLESS: "true"
+    volumes:
+      - omnimcp-data:/app/data
+
+volumes:
+  omnimcp-data:
