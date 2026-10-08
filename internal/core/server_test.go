@@ -58,7 +58,7 @@ func TestArtifactsStayInsideRoot(t *testing.T) {
 func TestMCPCall(t *testing.T) {
 	r := NewRegistry()
 	_ = r.Register(xiaohongshu.New())
-	s := &Server{Registry: r, Logger: DefaultLogger(), Browser: plugin.NewMemoryBrowser()}
+	s := &Server{Registry: r, Logger: DefaultLogger(), Browser: searchFixtureBrowser{plugin.NewMemoryBrowser()}}
 	in := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"xiaohongshu_search_notes","arguments":{"keyword":"AI"}}}` + "\n"
 	var out bytes.Buffer
 	if err := s.Serve(context.Background(), strings.NewReader(in), &out); err != nil {
@@ -71,4 +71,10 @@ func TestMCPCall(t *testing.T) {
 	if v["error"] != nil {
 		t.Fatalf("unexpected error: %v", v)
 	}
+}
+
+type searchFixtureBrowser struct{ *plugin.MemoryBrowser }
+
+func (searchFixtureBrowser) Snapshot(context.Context) (string, error) {
+	return `AI note https://www.xiaohongshu.com/explore/note-1?xsec_token=test-token`, nil
 }

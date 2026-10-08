@@ -8,6 +8,9 @@ OmniMCP 是一个可自托管的网页自动化 MCP 运行时。服务端负责 
 
 ```bash
 cp .env.example .env
+set -a
+source .env
+set +a
 go run ./cmd/omnimcp
 ```
 
@@ -21,7 +24,9 @@ Docker 部署：
 OMNIMCP_API_TOKEN="change-this-token" docker compose up --build -d
 ```
 
-HTTP MCP 请求需要携带 `Authorization: Bearer <OMNIMCP_API_TOKEN>`。本地 stdio MCP 入口仍然保留。
+HTTP MCP 请求需要携带 `Authorization: Bearer <OMNIMCP_API_TOKEN>`。配置通过环境变量读取，上述命令显式加载 `.env`。
+
+默认以 HTTP 服务持续运行。需要 stdio MCP 时，使用 `go run ./cmd/omnimcp -transport stdio`（编译后使用 `bin/omnimcp -transport stdio`）。
 
 ## 浏览器扩展
 
@@ -46,6 +51,10 @@ HTTP MCP 请求需要携带 `Authorization: Bearer <OMNIMCP_API_TOKEN>`。本地
 ```json
 {"_account_id":"main","keyword":"AI"}
 ```
+
+当前插件采用编译期注册；独立安装和热加载尚未实现。上述工具的网页流程依赖平台页面及登录状态，各平台的发布能力并非全部完成。小红书扩展模式的复杂发布流程仍在迁移，详见 [docs/SELF_HOSTED.md](docs/SELF_HOSTED.md)。
+
+扩展复用所在 Chrome Profile 的登录态。平台和账号 ID 用于连接路由；同一平台的多个真实账号需要使用不同 Chrome Profile。`managed` 模式由服务端为平台和账号创建独立 Chromium Profile。
 
 ## 配置
 
@@ -79,4 +88,6 @@ type Plugin interface {
 ```bash
 go test ./...
 go vet ./...
+node --test extension/*.test.*
+go build -o bin/omnimcp ./cmd/omnimcp
 ```

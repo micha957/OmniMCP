@@ -31,10 +31,16 @@ func (p *Plugin) Tools() []plugin.Tool {
 }
 
 type input struct {
-	Keyword, Title, Content, FeedID, XSecToken string
-	Limit                                      int
-	Images                                     []string
-	LoadComments, Unlike, Unfavorite           bool
+	Keyword      string   `json:"keyword"`
+	Title        string   `json:"title"`
+	Content      string   `json:"content"`
+	FeedID       string   `json:"feed_id"`
+	XSecToken    string   `json:"xsec_token"`
+	Limit        int      `json:"limit"`
+	Images       []string `json:"images"`
+	LoadComments bool     `json:"load_comments"`
+	Unlike       bool     `json:"unlike"`
+	Unfavorite   bool     `json:"unfavorite"`
 }
 
 func rb(c *plugin.Context) (*browser.RodBrowser, error) {
@@ -152,15 +158,31 @@ func (p *Plugin) Execute(ctx context.Context, c *plugin.Context, name string, ra
 // only sends a workflow command and receives page text; no browser profile is
 // copied into the server process.
 func (p *Plugin) executeExtension(ctx context.Context, c *plugin.Context, name string, in input) (any, error) {
+	openSnapshot := func(target string, valid func(string) bool) (string, error) {
+		openErr := c.Browser.Open(ctx, target)
+		text, snapshotErr := c.Browser.Snapshot(ctx)
+		if snapshotErr != nil {
+			if openErr != nil {
+				return "", openErr
+			}
+			return "", snapshotErr
+		}
+		// Xiaohongshu may add tracking parameters after navigation. The extension
+		// reports that URL rewrite as an open error even though the target page is ready.
+		if valid != nil && !valid(text) {
+			if openErr != nil {
+				return "", openErr
+			}
+			return "", fmt.Errorf("opened page did not contain the expected Xiaohongshu content")
+		}
+		return text, nil
+	}
 	noteURL := func() string {
 		return "https://www.xiaohongshu.com/explore/" + url.PathEscape(in.FeedID) + "?xsec_token=" + url.QueryEscape(in.XSecToken) + "&xsec_source=pc_search"
 	}
 	switch name {
 	case "check_login":
-		if err := c.Browser.Open(ctx, "https://www.xiaohongshu.com/explore"); err != nil {
-			return nil, err
-		}
-		text, err := c.Browser.Snapshot(ctx)
+		text, err := openSnapshot("https://www.xiaohongshu.com/explore", nil)
 		if err != nil {
 			return nil, err
 		}
@@ -170,10 +192,9 @@ func (p *Plugin) executeExtension(ctx context.Context, c *plugin.Context, name s
 			return nil, fmt.Errorf("keyword is required")
 		}
 		url := "https://www.xiaohongshu.com/search_result?keyword=" + url.QueryEscape(in.Keyword)
-		if err := c.Browser.Open(ctx, url); err != nil {
-			return nil, err
-		}
-		text, err := c.Browser.Snapshot(ctx)
+		text, err := openSnapshot(url, func(text string) bool {
+			return strings.Contains(text, in.Keyword) && strings.Contains(text, "xsec_token")
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -191,10 +212,9 @@ func (p *Plugin) executeExtension(ctx context.Context, c *plugin.Context, name s
 		if in.FeedID == "" || in.XSecToken == "" {
 			return nil, fmt.Errorf("feed_id and xsec_token are required")
 		}
-		if err := c.Browser.Open(ctx, noteURL()); err != nil {
-			return nil, err
-		}
-		text, err := c.Browser.Snapshot(ctx)
+		text, err := openSnapshot(noteURL(), func(text string) bool {
+			return strings.Contains(text, in.FeedID)
+		})
 		if err != nil {
 			return nil, err
 		}

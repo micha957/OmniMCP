@@ -76,3 +76,8 @@ func ToolSchema(properties string, required []string) json.RawMessage {
 }
 
 func mustJSON(v any) string { b, _ := json.Marshal(v); return string(b) }
+
+// StructuredReader exposes bounded platform DOM extraction without arbitrary JS.
+type StructuredReader interface {
+	ReadZhihu(context.Context, string, int) (json.RawMessage, error)
+}

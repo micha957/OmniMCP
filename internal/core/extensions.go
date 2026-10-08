@@ -186,3 +186,20 @@ var _ plugin.Browser = (*extensionBrowser)(nil)
 var _ plugin.Auth = (*extensionBrowser)(nil)
 var _ plugin.Uploader = (*extensionBrowser)(nil)
 var _ = time.Second
+
+func (b *extensionBrowser) ReadZhihu(ctx context.Context, mode string, limit int) (json.RawMessage, error) {
+	v, err := b.m.call(ctx, b.account.PluginID, b.account.AccountID, "read_zhihu", map[string]any{"mode": mode, "limit": limit})
+	if err != nil {
+		return nil, err
+	}
+	var out struct {
+		Data json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(v, &out); err != nil {
+		return nil, err
+	}
+	if len(out.Data) == 0 {
+		return nil, fmt.Errorf("empty structured response")
+	}
+	return out.Data, nil
+}

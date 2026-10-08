@@ -7,6 +7,9 @@ services:
       OMNIMCP_WEB_ADDR: 0.0.0.0:8090
       OMNIMCP_API_TOKEN: ${OMNIMCP_API_TOKEN:-change-me}
       OMNIMCP_HEADLESS: "true"
+      OMNIMCP_BROWSER_MODE: extension
+      OMNIMCP_DATA_DIR: /app/data
+      OMNIMCP_ARTIFACT_DIR: /app/data/artifacts
     volumes:
       - omnimcp-data:/app/data
 
