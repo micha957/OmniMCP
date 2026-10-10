@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "OmniMCP Browser Connector",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Connects a user's visible browser session to a self-hosted OmniMCP server.",
   "permissions": [
     "tabs",
@@ -9,7 +9,8 @@
     "storage",
     "scripting",
     "cookies",
-    "alarms"
+    "alarms",
+    "debugger"
   ],
   "host_permissions": [
     "http://127.0.0.1:8090/*",

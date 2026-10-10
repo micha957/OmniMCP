@@ -9,7 +9,7 @@ OmniMCP 的开源仓库只负责可自托管的运行时：MCP Server、Dashboar
 - `/mcp`：部署实例自己的 MCP HTTP 入口。
 - `extension/`：连接部署实例的 Chrome 扩展。
 
-需要让支持扩展连接的平台优先使用用户 Chrome 时，可设置 `OMNIMCP_BROWSER_MODE=extension`。插件 Manifest 的 `browser_mode` 决定是否使用扩展；当前 B 站以及小红书的登录检查、搜索支持扩展连接，复杂的小红书发布流程仍在继续迁移。
+需要让支持扩展连接的平台优先使用用户 Chrome 时，可设置 `OMNIMCP_BROWSER_MODE=extension`。插件 Manifest 的 `browser_mode` 决定是否使用扩展；目前除微信公众号（官方 API）外的平台都走扩展连接；小红书发布在扩展模式下支持标题、正文和图片，话题等高级选项只在 managed 模式可用。
 
 托管服务属于独立产品，可以实现自己的用户、计费、配额和中转层；开源运行时不包含这些实现。托管服务应通过标准 MCP JSON-RPC 调用工具，并使用扩展设置中的服务器地址和 Token。
 

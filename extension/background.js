@@ -22,15 +22,21 @@ async function settings() {
   return chrome.storage.local.get({ server: DEFAULT_SERVER, token: '', pluginId: '', accountId: 'default' });
 }
 
-async function getBoundTabId() {
-  const value = await chrome.storage.session?.get?.(TAB_KEY) || await chrome.storage.local.get(TAB_KEY);
-  return Number.isInteger(value[TAB_KEY]) ? value[TAB_KEY] : undefined;
+// Each platform (scope) drives its own tab, so one connection can serve several
+// platforms without them navigating each other's page.
+const tabKey = scope => `${TAB_KEY}.${scope || 'default'}`;
+const tabArea = () => chrome.storage.session?.set ? chrome.storage.session : chrome.storage.local;
+
+async function getBoundTabId(scope) {
+  const key = tabKey(scope);
+  const value = await tabArea().get(key);
+  return Number.isInteger(value[key]) ? value[key] : undefined;
 }
 
-async function setBoundTabId(tabId) {
-  const area = chrome.storage.session?.set ? chrome.storage.session : chrome.storage.local;
-  if (tabId == null) await area.remove(TAB_KEY);
-  else await area.set({ [TAB_KEY]: tabId });
+async function setBoundTabId(scope, tabId) {
+  const area = tabArea();
+  if (tabId == null) await area.remove(tabKey(scope));
+  else await area.set({ [tabKey(scope)]: tabId });
 }
 
 async function post(path, body) {
@@ -60,54 +66,149 @@ async function ensureContentScript(tabId) {
   throw new Error(`页面内容脚本未就绪${lastError?.message ? `: ${lastError.message}` : ''}`);
 }
 
-async function currentTab() {
-  const boundId = await getBoundTabId();
+async function currentTab(scope) {
+  const boundId = await getBoundTabId(scope);
   if (boundId != null) {
     try {
       const tab = await chrome.tabs.get(boundId);
       if (tab?.id != null) return tab;
-    } catch (_) { await setBoundTabId(undefined); }
+    } catch (_) { await setBoundTabId(scope, undefined); }
   }
   throw new Error('当前连接没有绑定标签页，请先执行 open');
 }
 
-async function sendTabCommand(method, params) {
-  const tab = await currentTab();
+async function sendTabCommand(scope, method, params) {
+  const tab = await currentTab(scope);
   await ensureContentScript(tab.id);
   const result = await chrome.tabs.sendMessage(tab.id, { type: method === 'snapshot' ? 'snapshot' : method, ...params });
   if (!result?.ok) throw new Error(result?.error || `${method} 失败`);
   return result;
 }
 
+// Platforms append tracking parameters or redirect (e.g. to a login page), so
+// navigation is done once the tab has loaded anything after our request.
+async function waitForNavigation(tabId, requested) {
+  const started = Date.now();
+  const deadline = started + Math.max(READY_TIMEOUT_MS, 20000);
+  let sawLoading = false;
+  while (Date.now() < deadline) {
+    const current = await chrome.tabs.get(tabId);
+    if (current.status === 'loading') sawLoading = true;
+    if (current.status === 'complete' && current.url && !current.url.startsWith('about:')) {
+      if (current.url === requested.href || sawLoading) return current;
+      // Fast navigations may finish between polls.
+      if (Date.now() - started > 1500) return current;
+    }
+    await sleep(READY_POLL_MS);
+  }
+  throw new Error('页面导航超时');
+}
+
+// chrome.debugger produces isTrusted input events; the browser shows a
+// "being debugged" bar while attached, so detach right after each action.
+async function withDebugger(tabId, fn) {
+  const target = { tabId };
+  await chrome.debugger.attach(target, '1.3');
+  try {
+    return await fn((method, params) => chrome.debugger.sendCommand(target, method, params));
+  } finally {
+    await chrome.debugger.detach(target).catch(() => {});
+  }
+}
+
+// Runs in the page's MAIN world; must stay self-contained.
+function readGlobalInPage(path) {
+  const unwrap = v => (v && typeof v === 'object' && v.__v_isRef) ? (v._value !== undefined ? v._value : v.value) : v;
+  let cur = window;
+  for (const key of path.split('.')) {
+    cur = unwrap(cur);
+    if (cur == null) return '';
+    cur = cur[key];
+  }
+  cur = unwrap(cur);
+  if (cur === undefined) return '';
+  const seen = new WeakSet();
+  return JSON.stringify(cur, (_k, v) => {
+    v = unwrap(v);
+    if (v && typeof v === 'object') { if (seen.has(v)) return undefined; seen.add(v); }
+    return v;
+  }) || '';
+}
+
+// Polls from the worker so waits survive navigations that reload the content script.
+async function waitFor(scope, { selector = '', text = '', timeout_ms = 10000 }) {
+  const deadline = Date.now() + Math.min(Number(timeout_ms) || 10000, 120000);
+  let last = '';
+  while (Date.now() < deadline) {
+    try {
+      const result = await sendTabCommand(scope, 'match', { selector, text });
+      if (result.matched) return { ok: true };
+    } catch (error) { last = error.message; }
+    await sleep(300);
+  }
+  throw new Error(`wait_for 超时: selector=${selector} text=${text}${last ? ` (${last})` : ''}`);
+}
+
 async function handleCommand(command) {
+  const scope = command.scope || 'default';
   if (command.method === 'open') {
     const requested = new URL(command.params.url);
-    const boundId = await getBoundTabId();
+    const boundId = await getBoundTabId(scope);
     let existing;
     if (boundId != null) {
       try { existing = await chrome.tabs.get(boundId); } catch (_) { /* Closed tab: create a new one. */ }
     }
-    // Reuse only our bound tab on the same origin, never another user tab.
-    const reuse = existing?.url && new URL(existing.url).origin === requested.origin;
-    const tab = reuse ? await chrome.tabs.update(boundId, {url: requested.href}) : await chrome.tabs.create({url: requested.href});
+    // Reuse only our bound tab, never another user tab.
+    const tab = existing ? await chrome.tabs.update(boundId, {url: requested.href}) : await chrome.tabs.create({url: requested.href});
     if (tab.id == null) throw new Error('打开页面失败：没有标签页 ID');
-    await setBoundTabId(tab.id);
-    const deadline = Date.now() + READY_TIMEOUT_MS;
-    let loaded = false;
-    while (Date.now() < deadline) {
-      const current = await chrome.tabs.get(tab.id);
-      if (current.status === 'complete' && current.url === requested.href) { loaded = true; break; }
-      await sleep(READY_POLL_MS);
-    }
-    if (!loaded) throw new Error('页面导航未完成或跳转到了其他地址');
+    await setBoundTabId(scope, tab.id);
+    const current = await waitForNavigation(tab.id, requested);
     await ensureContentScript(tab.id);
-    return { tabId: tab.id, ready: true };
+    return { tabId: tab.id, ready: true, url: current.url, redirected: current.url !== requested.href };
+  }
+  if (command.method === 'url') {
+    const tab = await currentTab(scope);
+    return { url: tab.url, title: tab.title };
+  }
+  if (command.method === 'read_global') {
+    const tab = await currentTab(scope);
+    const [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, world: 'MAIN', func: readGlobalInPage, args: [String(command.params.path || '')] });
+    return { json: res?.result || '' };
+  }
+  if (command.method === 'wait_for') return waitFor(scope, command.params || {});
+  if (command.method === 'trusted_click') {
+    const tab = await currentTab(scope);
+    const { x, y } = await sendTabCommand(scope, 'locate', command.params);
+    await withDebugger(tab.id, async send => {
+      await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
+      await send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', clickCount: 1 });
+      await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', clickCount: 1 });
+    });
+    return { ok: true };
+  }
+  if (command.method === 'trusted_key') {
+    const keys = { Enter: [13, '\r'], Escape: [27, ''], Tab: [9, ''], Backspace: [8, ''] };
+    const [code, text] = keys[command.params.key] || [];
+    if (code == null) throw new Error(`unsupported key ${command.params.key}`);
+    const tab = await currentTab(scope);
+    await withDebugger(tab.id, async send => {
+      const base = { key: command.params.key, code: command.params.key, windowsVirtualKeyCode: code, nativeVirtualKeyCode: code };
+      await send('Input.dispatchKeyEvent', { type: 'keyDown', ...base, ...(text ? { text } : {}) });
+      await send('Input.dispatchKeyEvent', { type: 'keyUp', ...base });
+    });
+    return { ok: true };
+  }
+  if (command.method === 'trusted_type') {
+    const tab = await currentTab(scope);
+    await sendTabCommand(scope, 'locate', { selector: command.params.selector, focus: true });
+    await withDebugger(tab.id, send => send('Input.insertText', { text: String(command.params.value ?? '') }));
+    return { ok: true };
   }
   if (command.method === 'cookies') {
     const cookies = await chrome.cookies.getAll({ domain: command.params.domain });
     return { cookie: cookies.map(c => `${c.name}=${c.value}`).join('; ') };
   }
-  return sendTabCommand(command.method, command.params || {});
+  return sendTabCommand(scope, command.method, command.params || {});
 }
 
 async function connect() {
@@ -215,7 +316,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return true;
 });
 
-chrome.tabs.onRemoved.addListener(tabId => getBoundTabId().then(id => id === tabId && setBoundTabId(undefined)));
+chrome.tabs.onRemoved.addListener(async tabId => {
+  const all = await tabArea().get(null);
+  const stale = Object.keys(all).filter(k => k.startsWith(TAB_KEY) && all[k] === tabId);
+  if (stale.length) await tabArea().remove(stale);
+});
 // Browser-owned alarms survive worker suspension; setTimeout alone does not.
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === RECONNECT_ALARM) return connect();

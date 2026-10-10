@@ -26,12 +26,34 @@ func (*Plugin) Tools() []plugin.Tool {
 		{Name: "get_comments", Description: "获取 B 站视频评论", InputSchema: plugin.ToolSchema(`{"aid":{"type":"string"},"page":{"type":"integer","minimum":1}}`, []string{"aid"})},
 		{Name: "list_user_videos", Description: "获取 UP 主视频列表", InputSchema: plugin.ToolSchema(`{"mid":{"type":"string"},"page":{"type":"integer","minimum":1}}`, []string{"mid"})},
 		{Name: "post_comment", Description: "发表评论到 B 站视频（需要 Cookie）", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"aid":{"type":"string"},"content":{"type":"string"}}`, []string{"aid", "content"})},
+		{Name: "publish_video", Description: "通过 B 站创作中心投稿视频：mode=publish 立即投稿，mode=draft 存草稿。分区使用页面自动推荐", Mutating: true, Confirm: true, Timeout: 30 * time.Minute, InputSchema: plugin.ToolSchema(`{"file_path":{"type":"string","description":"本机视频绝对路径"},"title":{"type":"string","maxLength":80},"content":{"type":"string","maxLength":2000,"description":"简介"},"tags":{"type":"array","items":{"type":"string"},"maxItems":10,"description":"标签，B 站投稿通常至少需要 1 个"},"mode":{"type":"string","enum":["publish","draft"]}}`, []string{"file_path", "title", "mode"})},
 	}
 }
 
 type input struct {
-	Keyword, BVID, AID, MID, Content string
-	Page                             int
+	Keyword, BVID, AID, MID, Content, Title, Mode string
+	FilePath                                      string `json:"file_path"`
+	Tags                                          []string
+	Page                                          int
+}
+
+// creatorFlow drives the upload page that the creator centre embeds in an iframe;
+// opening it directly keeps it in the top frame where the extension runs.
+var creatorFlow = plugin.CreatorFlow{
+	URL: "https://member.bilibili.com/york/videoup", LoginHint: "passport.bilibili.com",
+	FileInput: `input[type="file"]`,
+	Ready:     []string{`input[placeholder*="标题"]`},
+	Title:     []string{`input[placeholder*="标题"]`}, TitleMax: 80,
+	Body:     []string{`.ql-editor[contenteditable="true"]`, `div[contenteditable="true"]`},
+	BodyMax:  2000,
+	TagInput: []string{`input[placeholder*="回车"]`, `input[placeholder*="标签"]`},
+	// Submitting before the upload finishes is rejected by the page.
+	UploadDone:     []string{"上传完成"},
+	Publish:        []plugin.ClickTarget{{Selector: "span, button", Text: "立即投稿", Exact: true}},
+	Draft:          []plugin.ClickTarget{{Selector: "span, button", Text: "存草稿", Exact: true}},
+	PublishedTexts: []string{"稿件投递成功", "投稿成功"},
+	DraftTexts:     []string{"草稿保存成功", "存草稿成功", "保存草稿成功"},
+	UploadTimeout:  25 * time.Minute,
 }
 
 func (p *Plugin) Execute(ctx context.Context, c *plugin.Context, name string, raw json.RawMessage) (any, error) {
@@ -56,6 +78,19 @@ func (p *Plugin) Execute(ctx context.Context, c *plugin.Context, name string, ra
 		return p.get(ctx, c, "https://api.bilibili.com/x/space/arc/search?"+q.Encode())
 	case "post_comment":
 		return p.postComment(ctx, c, in.AID, in.Content)
+	case "publish_video":
+		draft, err := plugin.ParseMode(in.Mode)
+		if err != nil {
+			return nil, err
+		}
+		if strings.TrimSpace(in.Title) == "" {
+			return nil, fmt.Errorf("title is required")
+		}
+		page, err := plugin.NewPage(c.Browser)
+		if err != nil {
+			return nil, err
+		}
+		return plugin.RunCreatorFlow(ctx, page, creatorFlow, plugin.CreatorPost{Files: []string{in.FilePath}, Title: in.Title, Body: in.Content, Tags: in.Tags, Draft: draft})
 	default:
 		return nil, fmt.Errorf("unknown tool %q", name)
 	}

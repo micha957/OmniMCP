@@ -14,7 +14,7 @@ function harness({httpStatus=200,open=true}={}) {
   chrome:{alarms:{create:async(name,info)=>{alarms.set(name,info)},onAlarm:{addListener:f=>{alarmListener=f}}},storage:{local:{get:async defaults=>({...defaults,...saved}),set:async v=>{saved={...saved,...v}}}},
    runtime:{onMessage:{addListener:f=>{listener=f}},onStartup:{addListener:f=>{startup=f}},onInstalled:{addListener:()=>{}}},tabs:{onRemoved:{addListener:()=>{}}}}};
  vm.runInNewContext(fs.readFileSync(__dirname+'/background.js','utf8'),context);
- return {urls,sockets,alarms,checks:()=>checks,startup:()=>startup(),alarm:()=>alarmListener?.({name:[...alarms.keys()][0]}),setStatus:v=>{status=v},call:msg=>new Promise(resolve=>listener(msg,{},resolve)),close:()=>{for(const h of timers){clearTimeout(h);clearInterval(h)}}};
+ return {context,urls,sockets,alarms,checks:()=>checks,startup:()=>startup(),alarm:()=>alarmListener?.({name:[...alarms.keys()][0]}),setStatus:v=>{status=v},call:msg=>new Promise(resolve=>listener(msg,{},resolve)),close:()=>{for(const h of timers){clearTimeout(h);clearInterval(h)}}};
 }
 test('saved MCP endpoint is normalized to the WebSocket base path and reports open',async()=>{
  const h=harness();try{await new Promise(setImmediate);
@@ -49,5 +49,16 @@ test('browser alarm recovers after retry timers are lost',async()=>{
  await h.alarm();
  await new Promise(setImmediate);
  assert.equal((await h.call({type:'connection_status'})).connected,true);
+ }finally{h.close()}
+});
+
+test('read_global unwraps Vue refs and survives cycles',async()=>{
+ const h=harness();try{
+ const feeds={__v_isRef:true,_rawValue:[],_value:[{id:'a'}]};
+ const cyclic={name:'x'};cyclic.self=cyclic;
+ h.context.window={__INITIAL_STATE__:{search:{feeds},meta:cyclic}};
+ assert.equal(h.context.readGlobalInPage('__INITIAL_STATE__.search.feeds'),'[{"id":"a"}]');
+ assert.equal(h.context.readGlobalInPage('__INITIAL_STATE__.meta'),'{"name":"x"}');
+ assert.equal(h.context.readGlobalInPage('__INITIAL_STATE__.missing.path'),'');
  }finally{h.close()}
 });

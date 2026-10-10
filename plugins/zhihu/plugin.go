@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 )
 
 type Plugin struct{}
@@ -24,20 +25,21 @@ func (*Plugin) Tools() []plugin.Tool {
 		{Name: "search", Description: "搜索知乎内容", InputSchema: plugin.ToolSchema(`{"keyword":{"type":"string"}}`, []string{"keyword"})},
 		{Name: "open", Description: "打开知乎网页", InputSchema: plugin.ToolSchema(`{"url":{"type":"string"}}`, []string{"url"})},
 		{Name: "snapshot", Description: "读取当前知乎页面", InputSchema: plugin.ToolSchema(`{}`, nil)},
-		{Name: "get_detail", Description: "读取知乎内容详情", InputSchema: plugin.ToolSchema(`{"id":{"type":"string"}}`, []string{"id"})},
-		{Name: "like", Description: "点赞知乎内容", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"id":{"type":"string"}}`, []string{"id"})},
-		{Name: "comment", Description: "评论知乎内容", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"id":{"type":"string"},"content":{"type":"string"}}`, []string{"id", "content"})},
+		{Name: "get_detail", Description: "读取知乎问题、回答或文章页面；传 url，或传问题 id", InputSchema: plugin.ToolSchema(`{"url":{"type":"string"},"id":{"type":"string","description":"问题 ID"}}`, nil)},
+		{Name: "like", Description: "赞同知乎回答或文章（页面上第一个赞同按钮），并确认按钮变为已赞同", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"url":{"type":"string"},"id":{"type":"string","description":"问题 ID"}}`, nil)},
+		{Name: "comment", Description: "评论知乎回答或文章，提交后确认评论出现", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"url":{"type":"string"},"id":{"type":"string","description":"问题 ID"},"content":{"type":"string"}}`, []string{"content"})},
 		{Name: "editor_snapshot", Description: "读取知乎文章编辑器状态", InputSchema: plugin.ToolSchema(`{}`, nil)},
-		{Name: "fill_article", Description: "填写知乎文章标题和正文，不提交发布", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"title":{"type":"string","maxLength":100},"content":{"type":"string"}}`, []string{"title", "content"})},
+		{Name: "fill_article", Description: "在当前已打开的知乎编辑器里填写标题和正文，不提交", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"title":{"type":"string","maxLength":100},"content":{"type":"string"}}`, []string{"title", "content"})},
+		{Name: "publish_article", Description: "写一篇知乎专栏文章：mode=draft 保存为草稿（编辑器自动保存），mode=publish 直接发布。返回文章链接", Mutating: true, Confirm: true, Timeout: 3 * time.Minute, InputSchema: plugin.ToolSchema(`{"title":{"type":"string","maxLength":100},"content":{"type":"string"},"mode":{"type":"string","enum":["publish","draft"]}}`, []string{"title", "content", "mode"})},
 		{Name: "click", Description: "点击知乎当前页面元素", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"selector":{"type":"string"}}`, []string{"selector"})},
 		{Name: "fill", Description: "填写知乎当前页面元素", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"selector":{"type":"string"},"value":{"type":"string"}}`, []string{"selector", "value"})},
 	}
 }
 
 type input struct {
-	Keyword, URL, ID, Title, Content, Selector, Value string
-	Limit                                             int
-	Continue                                          bool
+	Keyword, URL, ID, Title, Content, Selector, Value, Mode string
+	Limit                                                   int
+	Continue                                                bool
 }
 
 func (p *Plugin) Execute(ctx context.Context, c *plugin.Context, name string, raw json.RawMessage) (any, error) {
@@ -107,36 +109,47 @@ func (p *Plugin) Execute(ctx context.Context, c *plugin.Context, name string, ra
 		if strings.TrimSpace(in.Keyword) == "" {
 			return nil, fmt.Errorf("keyword is required")
 		}
-		if err := c.Browser.Open(ctx, "https://www.zhihu.com/search?type=content&q="+in.Keyword); err != nil {
+		if err := c.Browser.Open(ctx, "https://www.zhihu.com/search?type=content&q="+url.QueryEscape(in.Keyword)); err != nil {
 			return nil, err
 		}
 		t, e := c.Browser.Snapshot(ctx)
 		return map[string]any{"keyword": in.Keyword, "text": t}, e
 	case "get_detail":
-		if err := c.Browser.Open(ctx, "https://www.zhihu.com/question/"+in.ID); err != nil {
+		target, err := contentURL(in.ID, in.URL)
+		if err != nil {
+			return nil, err
+		}
+		if err := c.Browser.Open(ctx, target); err != nil {
 			return nil, err
 		}
 		t, e := c.Browser.Snapshot(ctx)
-		return map[string]any{"id": in.ID, "text": t}, e
+		return map[string]any{"url": target, "text": t}, e
 	case "like":
-		if err := c.Browser.Open(ctx, "https://www.zhihu.com/question/"+in.ID); err != nil {
+		target, err := contentURL(in.ID, in.URL)
+		if err != nil {
 			return nil, err
 		}
-		if err := c.Browser.Click(ctx, "button[aria-label*='赞同']"); err != nil {
+		if err := c.Browser.Open(ctx, target); err != nil {
 			return nil, err
 		}
-		return map[string]any{"success": true}, nil
+		return like(ctx, c.Browser)
 	case "comment":
 		if strings.TrimSpace(in.Content) == "" {
 			return nil, fmt.Errorf("content is required")
 		}
-		if err := c.Browser.Open(ctx, "https://www.zhihu.com/question/"+in.ID); err != nil {
+		target, err := contentURL(in.ID, in.URL)
+		if err != nil {
 			return nil, err
 		}
-		if err := c.Browser.Fill(ctx, "textarea[placeholder*='评论']", in.Content); err != nil {
+		if err := c.Browser.Open(ctx, target); err != nil {
 			return nil, err
 		}
-		return map[string]any{"success": true}, nil
+		if err := plugin.PostComment(ctx, c.Browser, commentFlow, in.Content); err != nil {
+			return nil, err
+		}
+		return map[string]any{"success": true, "verified": true}, nil
+	case "publish_article":
+		return publishArticle(ctx, c.Browser, in)
 	case "fill_article":
 		if strings.TrimSpace(in.Title) == "" || strings.TrimSpace(in.Content) == "" {
 			return nil, fmt.Errorf("title and content are required")
@@ -184,4 +197,127 @@ func collectionTarget(name, raw string) (string, string, error) {
 	u.RawQuery = ""
 	u.Fragment = ""
 	return mode, u.String(), nil
+}
+
+// contentURL accepts a full zhihu.com URL or a bare question id.
+func contentURL(id, raw string) (string, error) {
+	if raw == "" {
+		if strings.TrimSpace(id) == "" {
+			return "", fmt.Errorf("url or id is required")
+		}
+		return "https://www.zhihu.com/question/" + url.PathEscape(strings.TrimSpace(id)), nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" || !(u.Hostname() == "zhihu.com" || strings.HasSuffix(u.Hostname(), ".zhihu.com")) {
+		return "", fmt.Errorf("url must be an https zhihu.com address")
+	}
+	return u.String(), nil
+}
+
+const voteSelector = "button.VoteButton--up, button.VoteButton[aria-label*='赞同']"
+
+var commentFlow = plugin.CommentFlow{
+	Openers: []plugin.ClickTarget{{Selector: ".ContentItem-actions button", Text: "条评论"}, {Selector: ".ContentItem-actions button", Text: "添加评论"}},
+	Inputs:  []string{".CommentEditor-input [contenteditable='true']", ".public-DraftEditor-content[contenteditable='true']", "div[contenteditable='true']"},
+	Submits: []plugin.ClickTarget{{Selector: "button", Text: "发布"}},
+}
+
+func like(ctx context.Context, b plugin.Browser) (any, error) {
+	in, ok1 := b.(plugin.Inspector)
+	ti, ok2 := b.(plugin.TrustedInput)
+	if !ok1 || !ok2 {
+		return nil, fmt.Errorf("browser connector does not support verified input; reload the OmniMCP extension")
+	}
+	if err := in.WaitFor(ctx, voteSelector, "", 8*time.Second); err != nil {
+		return nil, fmt.Errorf("找不到赞同按钮: %w", err)
+	}
+	if info, err := in.Query(ctx, voteSelector); err == nil && strings.Contains(info.Attrs["class"], "is-active") {
+		return map[string]any{"success": true, "changed": false, "voted": true}, nil
+	}
+	if err := ti.ClickElement(ctx, voteSelector, plugin.ClickOptions{}); err != nil {
+		return nil, err
+	}
+	deadline := time.Now().Add(4 * time.Second)
+	for time.Now().Before(deadline) {
+		if info, err := in.Query(ctx, voteSelector); err == nil && strings.Contains(info.Attrs["class"], "is-active") {
+			return map[string]any{"success": true, "changed": true, "voted": true}, nil
+		}
+		time.Sleep(400 * time.Millisecond)
+	}
+	return nil, fmt.Errorf("点击后赞同按钮未变为已赞同")
+}
+
+const (
+	selArticleTitle = `textarea[placeholder*="标题"]`
+	selArticleBody  = `.public-DraftEditor-content[contenteditable="true"]`
+)
+
+// publishWait bounds how long to wait for the article page after publishing.
+var publishWait = 30 * time.Second
+
+var articlePath = regexp.MustCompile(`^/p/(\d+)(/edit)?/?$`)
+
+// publishArticle writes a new column article. The editor autosaves to a
+// draft at /p/<id>/edit; publishing moves the page to /p/<id>.
+func publishArticle(ctx context.Context, b plugin.Browser, in input) (any, error) {
+	draft, err := plugin.ParseMode(in.Mode)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(in.Title) == "" || strings.TrimSpace(in.Content) == "" {
+		return nil, fmt.Errorf("title and content are required")
+	}
+	if n := len([]rune(in.Title)); n > 100 {
+		return nil, fmt.Errorf("title must be <=100 characters")
+	}
+	page, err := plugin.NewPage(b)
+	if err != nil {
+		return nil, err
+	}
+	if err := page.Open(ctx, "https://zhuanlan.zhihu.com/write"); err != nil {
+		return nil, err
+	}
+	if u, _ := page.CurrentURL(ctx); strings.Contains(u, "signin") {
+		return nil, fmt.Errorf("知乎未登录，请先在 Chrome 中登录")
+	}
+	if err := page.WaitFor(ctx, selArticleTitle, "", 15*time.Second); err != nil {
+		return nil, fmt.Errorf("没有打开文章编辑器: %w", err)
+	}
+	if err := page.TypeText(ctx, selArticleTitle, in.Title); err != nil {
+		return nil, fmt.Errorf("填写标题失败: %w", err)
+	}
+	if err := page.TypeText(ctx, selArticleBody, in.Content); err != nil {
+		return nil, fmt.Errorf("填写正文失败: %w", err)
+	}
+	// Wait for the autosave to assign the draft its /p/<id>/edit address,
+	// so a later URL change can only mean the article was published.
+	var draftURL string
+	err = plugin.Poll(ctx, 30*time.Second, time.Second, func() (bool, error) {
+		u, err := page.CurrentURL(ctx)
+		if err != nil {
+			return false, err
+		}
+		if parsed, err := url.Parse(u); err == nil && articlePath.MatchString(parsed.Path) {
+			draftURL = u
+			return true, nil
+		}
+		return false, fmt.Errorf("草稿还没有自动保存")
+	})
+	if err != nil {
+		return nil, err
+	}
+	if draft {
+		return map[string]any{"success": true, "status": "draft_saved", "url": draftURL}, nil
+	}
+	if _, err := plugin.ClickFirst(ctx, page, []plugin.ClickTarget{{Selector: "button", Text: "发布", Exact: true}}, 15*time.Second); err != nil {
+		return nil, fmt.Errorf("没有找到发布按钮: %w", err)
+	}
+	if _, err := page.AwaitOutcome(ctx, draftURL, true, nil, nil, publishWait); err != nil {
+		return nil, fmt.Errorf("点击发布后页面没有跳转到文章页（可能需要在发布设置里补充话题，草稿已保存在 %s）: %w", draftURL, err)
+	}
+	u, _ := page.CurrentURL(ctx)
+	if parsed, err := url.Parse(u); err != nil || !articlePath.MatchString(parsed.Path) || strings.HasSuffix(strings.TrimRight(parsed.Path, "/"), "/edit") {
+		return nil, fmt.Errorf("发布后跳转到了意外的页面 %s", u)
+	}
+	return map[string]any{"success": true, "status": "published", "url": u}, nil
 }

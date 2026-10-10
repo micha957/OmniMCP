@@ -38,13 +38,15 @@ func (*Plugin) Tools() []plugin.Tool {
 		{Name: "list_drafts", Description: "分页获取公众号草稿", InputSchema: plugin.ToolSchema(`{"offset":{"type":"integer"},"count":{"type":"integer","minimum":1,"maximum":20}}`, nil)},
 		{Name: "get_draft", Description: "获取公众号草稿详情", InputSchema: plugin.ToolSchema(`{"media_id":{"type":"string"}}`, []string{"media_id"})},
 		{Name: "delete_draft", Description: "删除公众号草稿", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"media_id":{"type":"string"}}`, []string{"media_id"})},
+		{Name: "publish_draft", Description: "发布一篇草稿（发布能力，不推送给粉丝），返回 publish_id；用 get_publish_status 查结果。需要公众号已开通发布接口权限", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"media_id":{"type":"string"}}`, []string{"media_id"})},
+		{Name: "get_publish_status", Description: "查询发布任务状态，成功时返回文章链接", InputSchema: plugin.ToolSchema(`{"publish_id":{"type":"string"}}`, []string{"publish_id"})},
 	}
 }
 
 type input struct {
-	FilePath, Title, Content, CoverPath, CoverMediaID, Author, Digest, ContentSourceURL, MediaID string
-	Offset, Count                                                                                int
-	NeedOpenComment, OnlyFansCanComment                                                          bool
+	FilePath, Title, Content, CoverPath, CoverMediaID, Author, Digest, ContentSourceURL, MediaID, PublishID string
+	Offset, Count                                                                                           int
+	NeedOpenComment, OnlyFansCanComment                                                                     bool
 }
 
 func (p *Plugin) Execute(ctx context.Context, c *plugin.Context, name string, raw json.RawMessage) (any, error) {
@@ -81,10 +83,38 @@ func (p *Plugin) Execute(ctx context.Context, c *plugin.Context, name string, ra
 			return nil, err
 		}
 		return p.api(ctx, "POST", "https://api.weixin.qq.com/cgi-bin/draft/delete?access_token="+tok.(map[string]any)["access_token"].(string), map[string]any{"media_id": in.MediaID})
+	case "publish_draft", "get_publish_status":
+		tok, err := p.access(ctx, c)
+		if err != nil {
+			return nil, err
+		}
+		access := tok.(map[string]any)["access_token"].(string)
+		if name == "publish_draft" {
+			if in.MediaID == "" {
+				return nil, fmt.Errorf("media_id is required")
+			}
+			return p.api(ctx, "POST", "https://api.weixin.qq.com/cgi-bin/freepublish/submit?access_token="+access, map[string]any{"media_id": in.MediaID})
+		}
+		if in.PublishID == "" {
+			return nil, fmt.Errorf("publish_id is required")
+		}
+		out, err := p.api(ctx, "POST", "https://api.weixin.qq.com/cgi-bin/freepublish/get?access_token="+access, map[string]any{"publish_id": in.PublishID})
+		if err != nil {
+			return nil, err
+		}
+		m := out.(map[string]any)
+		if st, ok := m["publish_status"].(float64); ok {
+			m["status_text"] = publishStatus[int(st)]
+		}
+		return m, nil
 	default:
 		return nil, fmt.Errorf("unknown tool %q", name)
 	}
 }
+
+// publishStatus explains freepublish/get publish_status codes.
+var publishStatus = map[int]string{0: "发布成功", 1: "发布中", 2: "原创失败", 3: "常规失败", 4: "平台审核不通过", 5: "成功后用户删除所有文章", 6: "成功后系统封禁所有文章"}
+
 func (p *Plugin) creds(c *plugin.Context) (string, string, error) {
 	key := strings.ToUpper(strings.NewReplacer("-", "_", "/", "_", " ", "_").Replace(c.Account.AccountID))
 	id := os.Getenv("OMNIMCP_WECHAT_" + key + "_APP_ID")

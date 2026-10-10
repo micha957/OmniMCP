@@ -1,10 +1,12 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"embed"
 	"encoding/json"
 	"github.com/heybox/omnimcp/plugin"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -39,6 +41,13 @@ func (d *Dashboard) Handler() http.Handler {
 	mux.HandleFunc("/healthz", d.health)
 	if d.Server.Extensions != nil {
 		mux.HandleFunc("/extension/ws", d.Server.Extensions.HandleWS)
+		mux.HandleFunc("/api/extensions", func(w http.ResponseWriter, r *http.Request) {
+			out := []map[string]string{}
+			for _, a := range d.Server.Extensions.Connections() {
+				out = append(out, map[string]string{"plugin_id": a.PluginID, "account_id": a.AccountID})
+			}
+			jsonOut(w, out)
+		})
 	}
 	return withLocalHeaders(mux)
 }
@@ -52,6 +61,8 @@ func (d *Dashboard) health(w http.ResponseWriter, r *http.Request) {
 // the endpoint suitable for localhost-only development.
 func (d *Dashboard) mcp(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
+		// This server does not open server-initiated SSE streams.
+		w.Header().Set("Allow", "POST")
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -63,13 +74,43 @@ func (d *Dashboard) mcp(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	var req request
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonOut(w, response{"2.0", nil, nil, map[string]any{"code": -32700, "message": err.Error()}})
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(d.Server.handle(r.Context(), req))
+	body = bytes.TrimSpace(body)
+	// JSON-RPC batches are accepted for clients still on the 2025-03-26 transport.
+	if len(body) > 0 && body[0] == '[' {
+		var reqs []request
+		if err := json.Unmarshal(body, &reqs); err != nil {
+			jsonOut(w, rpcError(nil, -32700, err.Error()))
+			return
+		}
+		out := []response{}
+		for _, req := range reqs {
+			if res := d.Server.handle(r.Context(), req); req.ID != nil {
+				out = append(out, res)
+			}
+		}
+		if len(out) == 0 {
+			w.WriteHeader(http.StatusAccepted)
+			return
+		}
+		jsonOut(w, out)
+		return
+	}
+	var req request
+	if err := json.Unmarshal(body, &req); err != nil {
+		jsonOut(w, rpcError(nil, -32700, err.Error()))
+		return
+	}
+	res := d.Server.handle(r.Context(), req)
+	if req.ID == nil {
+		w.WriteHeader(http.StatusAccepted)
+		return
+	}
+	jsonOut(w, res)
 }
 func withLocalHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -149,6 +190,10 @@ func (d *Dashboard) callTool(w http.ResponseWriter, r *http.Request) {
 		jsonOut(w, map[string]any{"ok": false, "error": res.Error})
 		return
 	}
+	if m, ok := res.Result.(map[string]any); ok && m["isError"] == true {
+		jsonOut(w, map[string]any{"ok": false, "error": m["content"], "result": res.Result})
+		return
+	}
 	jsonOut(w, map[string]any{"ok": true, "result": res.Result})
 }
 
@@ -181,11 +226,6 @@ func (d *Dashboard) accounts(w http.ResponseWriter, r *http.Request) {
 func (d *Dashboard) login(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "method not allowed", 405)
-		return
-	}
-	if token := strings.TrimSpace(os.Getenv("OMNIMCP_API_TOKEN")); token != "" && r.Header.Get("Authorization") != "Bearer "+token {
-		w.Header().Set("WWW-Authenticate", "Bearer")
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	var in struct {

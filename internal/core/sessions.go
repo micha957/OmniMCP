@@ -18,7 +18,6 @@ type SessionManager struct {
 	sessions map[string]*session
 }
 type session struct {
-	mu      sync.Mutex
 	browser *browser.RodBrowser
 }
 
@@ -49,16 +48,6 @@ func (m *SessionManager) Get(a plugin.Account) (plugin.Browser, error) {
 	}
 	m.sessions[k] = &session{browser: b}
 	return b, nil
-}
-func (m *SessionManager) Lock(a plugin.Account) func() {
-	m.mu.Lock()
-	s := m.sessions[m.key(a)]
-	m.mu.Unlock()
-	if s == nil {
-		return func() {}
-	}
-	s.mu.Lock()
-	return s.mu.Unlock
 }
 func (m *SessionManager) Close() error {
 	m.mu.Lock()

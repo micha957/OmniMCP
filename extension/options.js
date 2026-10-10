@@ -1,6 +1,6 @@
 const ids = ['server', 'token', 'pluginId', 'accountId'];
 const status = document.getElementById('status');
-chrome.storage.local.get({server:'http://127.0.0.1:8090',token:'',pluginId:'zhihu',accountId:'default'}).then(values => {
+chrome.storage.local.get({server:'http://127.0.0.1:8090',token:'',pluginId:'*',accountId:'default'}).then(values => {
   ids.forEach(id => document.getElementById(id).value = values[id] || '');
 });
 document.getElementById('save').onclick = async () => {
