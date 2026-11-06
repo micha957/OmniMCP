@@ -4,6 +4,7 @@ data/profiles/
 data/artifacts/
 data/agentops/
 data/approvals.json
+data/content-ops/
 .env
 .DS_Store
 /bin/
