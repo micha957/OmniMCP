@@ -1,0 +1,1087 @@
+{
+"collected_at": "2026-11-06",
+"platform": "xiaohongshu",
+"method": "各关键词公开搜索结果前 20 篇的展示数字，偏向高互动内容",
+"notes": [
+{
+"id": "6a89a86d0000000033008dae",
+"query": "AI工具推荐",
+"title": "一图看懂｜2026最好用的AI工具",
+"type": "normal",
+"likes": 12421,
+"collects": 10366,
+"comments": 1318
+},
+{
+"id": "6a170555000000000702ee4f",
+"query": "AI工具推荐",
+"title": "每天拆解一个AI产品：Unabyss",
+"type": "normal",
+"likes": 167,
+"collects": 191,
+"comments": 7
+},
+{
+"id": "6aca6347000000001a027d50",
+"query": "AI工具推荐",
+"title": "浅尝Grok Bot（搞研究，买东西）",
+"type": "normal",
+"likes": 346,
+"collects": 286,
+"comments": 25
+},
+{
+"id": "6ac62bca000000001a02354b",
+"query": "AI工具推荐",
+"title": "马斯克宣布 Grok bot 将由 Opus5.5 驱动",
+"type": "normal",
+"likes": 778,
+"collects": 451,
+"comments": 127
+},
+{
+"id": "6ad04b9c000000001203f519",
+"query": "AI工具推荐",
+"title": "从一个普通用户视角聊聊 AI 御三家",
+"type": "normal",
+"likes": 3676,
+"collects": 2028,
+"comments": 190
+},
+{
+"id": "6a3a17a500000000070254df",
+"query": "AI工具推荐",
+"title": "【06】GitHub上适合普通人的10个AI Skills",
+"type": "normal",
+"likes": 763,
+"collects": 851,
+"comments": 1
+},
+{
+"id": "6ab358e60000000015004988",
+"query": "AI工具推荐",
+"title": "agent 夯拉榜",
+"type": "normal",
+"likes": 1148,
+"collects": 1094,
+"comments": 87
+},
+{
+"id": "6ad85cc5000000002c011549",
+"query": "AI工具推荐",
+"title": "Codex做网页，先装这5个Skill",
+"type": "normal",
+"likes": 258,
+"collects": 436,
+"comments": 8
+},
+{
+"id": "6ae3592c000000002a02a23e",
+"query": "AI工具推荐",
+"title": "目前最火的四款personal Agent 口碑大对比",
+"type": "normal",
+"likes": 89,
+"collects": 75,
+"comments": 17
+},
+{
+"id": "6ae15618000000002b019b9f",
+"query": "AI工具推荐",
+"title": "天啊在Github上已经87.8K⭐了......",
+"type": "normal",
+"likes": 1279,
+"collects": 2038,
+"comments": 43
+},
+{
+"id": "6ae491860000000006031ae5",
+"query": "AI工具推荐",
+"title": "轻松在国内使用Claude",
+"type": "normal",
+"likes": 50,
+"collects": 29,
+"comments": 30
+},
+{
+"id": "6ad4d2720000000029014777",
+"query": "AI工具推荐",
+"title": "目前最火的四款个人 Agent 口碑大对比",
+"type": "normal",
+"likes": 311,
+"collects": 256,
+"comments": 42
+},
+{
+"id": "6ae021670000000015005c2a",
+"query": "AI工具推荐",
+"title": "强烈推荐大家使用 GrokBot",
+"type": "normal",
+"likes": 597,
+"collects": 360,
+"comments": 140
+},
+{
+"id": "6abe6c680000000015013471",
+"query": "AI工具推荐",
+"title": "被AI监督训练饮食的感觉很好",
+"type": "normal",
+"likes": 774,
+"collects": 985,
+"comments": 56
+},
+{
+"id": "6ae4aaac000000001201fba2",
+"query": "AI工具推荐",
+"title": "AI 信息差：7 种用上 Claude 的方式",
+"type": "normal",
+"likes": 309,
+"collects": 403,
+"comments": 39
+},
+{
+"id": "6ad4e79d000000002a007d12",
+"query": "AI工具推荐",
+"title": "最近爆火的muse到底是什么",
+"type": "normal",
+"likes": 447,
+"collects": 311,
+"comments": 138
+},
+{
+"id": "6ac8b479000000001301a5d2",
+"query": "AI工具推荐",
+"title": "Gemini在给出idea方面远超claude",
+"type": "normal",
+"likes": 851,
+"collects": 680,
+"comments": 97
+},
+{
+"id": "6adc6323000000002b00f41c",
+"query": "AI工具推荐",
+"title": "当今世界最先进大脑都在这！",
+"type": "normal",
+"likes": 259,
+"collects": 228,
+"comments": 4
+},
+{
+"id": "6ac0c44300000000020291f2",
+"query": "AI工具推荐",
+"title": "十月初AI能力排行榜TOP30",
+"type": "normal",
+"likes": 405,
+"collects": 201,
+"comments": 41
+},
+{
+"id": "6aea0510000000001f015623",
+"query": "AI工具推荐",
+"title": "每天拆解一个AI产品：DS-Bot",
+"type": "normal",
+"likes": 33,
+"collects": 28,
+"comments": 2
+},
+{
+"id": "6ab7a48a000000000b0074e0",
+"query": "vibecoding",
+"title": "Vibe Coding，孩子也应该会的技能！",
+"type": "normal",
+"likes": 970,
+"collects": 1055,
+"comments": 6
+},
+{
+"id": "6a1d074f000000003701f9ba",
+"query": "vibecoding",
+"title": "想看看大家vibe coding的作品",
+"type": "normal",
+"likes": 313,
+"collects": 347,
+"comments": 390
+},
+{
+"id": "69d7a2e2000000001e00ddc9",
+"query": "vibecoding",
+"title": "原来不交钱开发app，只能用7天",
+"type": "normal",
+"likes": 468,
+"collects": 443,
+"comments": 221
+},
+{
+"id": "6abb7394000000001a0210b3",
+"query": "vibecoding",
+"title": "🏆小红书vibecoding大赛入围获奖公示！",
+"type": "normal",
+"likes": 1069,
+"collects": 790,
+"comments": 445
+},
+{
+"id": "6a1d69ea00000000060338c8",
+"query": "vibecoding",
+"title": "目前我的Vibe Coding工作方法论",
+"type": "normal",
+"likes": 1681,
+"collects": 2744,
+"comments": 22
+},
+{
+"id": "69f3ed830000000013020401",
+"query": "vibecoding",
+"title": "vibe coding 边喝边收集印章app、心得分享",
+"type": "normal",
+"likes": 6670,
+"collects": 3420,
+"comments": 350
+},
+{
+"id": "6a0438bf0000000035026a23",
+"query": "vibecoding",
+"title": "vibe coding的产品形态",
+"type": "normal",
+"likes": 1882,
+"collects": 1825,
+"comments": 178
+},
+{
+"id": "69cbb641000000001a02e077",
+"query": "vibecoding",
+"title": "Variant：没有 AI 味UI设计",
+"type": "normal",
+"likes": 676,
+"collects": 752,
+"comments": 22
+},
+{
+"id": "6add8628000000003102d09e",
+"query": "vibecoding",
+"title": "Vibe Coding 10大神技，你用过哪几个",
+"type": "normal",
+"likes": 67,
+"collects": 134,
+"comments": 4
+},
+{
+"id": "6ac237da000000001500567b",
+"query": "vibecoding",
+"title": "别再说AI设计不高级｜先看这5个网站✨",
+"type": "normal",
+"likes": 91,
+"collects": 128,
+"comments": 2
+},
+{
+"id": "699f5173000000001b01dc8c",
+"query": "vibecoding",
+"title": "人人都是开发者了！是时候拿出来遛遛了",
+"type": "normal",
+"likes": 2088,
+"collects": 2482,
+"comments": 798
+},
+{
+"id": "6a4ce2b70000000016024b12",
+"query": "vibecoding",
+"title": "如何从GitHub上找到值得Vibe Coding的点子",
+"type": "normal",
+"likes": 1413,
+"collects": 1974,
+"comments": 18
+},
+{
+"id": "6a86aa99000000003301072e",
+"query": "vibecoding",
+"title": "用架构师思维做 Vibe Coding项目到 AI 工程",
+"type": "normal",
+"likes": 10,
+"collects": 11,
+"comments": 2
+},
+{
+"id": "6ae9335000000000160079ff",
+"query": "vibecoding",
+"title": "vibe coding入门 一定要搞懂这8个概念！",
+"type": "normal",
+"likes": 43,
+"collects": 36,
+"comments": 10
+},
+{
+"id": "6962b5c30000000022009921",
+"query": "vibecoding",
+"title": "",
+"type": "normal",
+"likes": 3428,
+"collects": 4007,
+"comments": 641
+},
+{
+"id": "6a9ca4c7000000000d02708a",
+"query": "vibecoding",
+"title": "分享我的第二个vibe coding作品💻",
+"type": "normal",
+"likes": 1369,
+"collects": 933,
+"comments": 57
+},
+{
+"id": "6aceef98000000001c02d7aa",
+"query": "vibecoding",
+"title": "每天拆解一个VibeCoding案例【钱包请等等】",
+"type": "normal",
+"likes": 278,
+"collects": 143,
+"comments": 9
+},
+{
+"id": "6ae1edd9000000002603ab95",
+"query": "vibecoding",
+"title": "草履虫也能学会的小手机教程(2)",
+"type": "normal",
+"likes": 148,
+"collects": 83,
+"comments": 3
+},
+{
+"id": "6a48fbce000000001503e25f",
+"query": "vibecoding",
+"title": "想看看大家的vibe coding作品",
+"type": "normal",
+"likes": 3515,
+"collects": 3690,
+"comments": 957
+},
+{
+"id": "699e6cc00000000016009e89",
+"query": "vibecoding",
+"title": "Vibe Coding全家桶！追求极致效率的AI工具",
+"type": "normal",
+"likes": 2484,
+"collects": 3787,
+"comments": 19
+},
+{
+"id": "6ae88985000000002c015130",
+"query": "AI运营小红书",
+"title": "从找选题到做图📚小红书 AI Skill 全家桶",
+"type": "normal",
+"likes": 136,
+"collects": 188,
+"comments": 11
+},
+{
+"id": "6ae3d5c2000000001802460c",
+"query": "AI运营小红书",
+"title": "AI副业教程｜让AI全自动运营小红书",
+"type": "normal",
+"likes": 6,
+"collects": 5,
+"comments": 0
+},
+{
+"id": "6a3f54e6000000000f01fc6a",
+"query": "AI运营小红书",
+"title": "把小红书日更交给 Codex",
+"type": "normal",
+"likes": 616,
+"collects": 747,
+"comments": 225
+},
+{
+"id": "6a43aed00000000017009eb8",
+"query": "AI运营小红书",
+"title": "我用Claude给自己搭建了一套小红书工作流",
+"type": "normal",
+"likes": 631,
+"collects": 818,
+"comments": 26
+},
+{
+"id": "6a86e56d0000000023020e43",
+"query": "AI运营小红书",
+"title": "Codex 做小红书，这 10 个AI工具最值得看",
+"type": "normal",
+"likes": 206,
+"collects": 318,
+"comments": 4
+},
+{
+"id": "6ac8c711000000001c00d441",
+"query": "AI运营小红书",
+"title": "1个人+AI，我把小红书运营塞进工作台",
+"type": "normal",
+"likes": 11,
+"collects": 7,
+"comments": 9
+},
+{
+"id": "6a559a85000000001c024a56",
+"query": "AI运营小红书",
+"title": "我把小红书的创作中心接进 Codex 了",
+"type": "normal",
+"likes": 233,
+"collects": 265,
+"comments": 20
+},
+{
+"id": "6acdfaea000000000202a55f",
+"query": "AI运营小红书",
+"title": "codex上最懂小红书的10个技能",
+"type": "normal",
+"likes": 148,
+"collects": 255,
+"comments": 5
+},
+{
+"id": "6ac93519000000001c00c216",
+"query": "AI运营小红书",
+"title": "我让ChatGPT的dot帮我运营小红书",
+"type": "normal",
+"likes": 9,
+"collects": 15,
+"comments": 0
+},
+{
+"id": "6a4ef832000000000802784f",
+"query": "AI运营小红书",
+"title": "家人们，别再信小红书用AI自动发图文了~",
+"type": "normal",
+"likes": 12,
+"collects": 4,
+"comments": 17
+},
+{
+"id": "6a55fdbd000000001702b35f",
+"query": "AI运营小红书",
+"title": "别让 Codex 直接写小红书我把流程改成了5步",
+"type": "normal",
+"likes": 7,
+"collects": 6,
+"comments": 0
+},
+{
+"id": "6a2f86e8000000001c0243e5",
+"query": "AI运营小红书",
+"title": "我用 Codex 给自己搭了一个小红书工作流",
+"type": "normal",
+"likes": 1798,
+"collects": 2346,
+"comments": 111
+},
+{
+"id": "6ad08d75000000001500a355",
+"query": "AI运营小红书",
+"title": "为了摸鱼，我做了个小红书一键生产skill",
+"type": "normal",
+"likes": 19,
+"collects": 16,
+"comments": 6
+},
+{
+"id": "6a884b990000000035022b5c",
+"query": "AI运营小红书",
+"title": "gpt可以帮我总结小红书了",
+"type": "normal",
+"likes": 263,
+"collects": 232,
+"comments": 21
+},
+{
+"id": "6a6a0f230000000001031c5d",
+"query": "AI运营小红书",
+"title": "10 个 Skill 帮你轻松做起小红书",
+"type": "video",
+"likes": 8514,
+"collects": 14188,
+"comments": 1529
+},
+{
+"id": "6ae719d1000000001e01548b",
+"query": "AI运营小红书",
+"title": "AI替我发小红书，只要扫码一次",
+"type": "normal",
+"likes": 6,
+"collects": 13,
+"comments": 6
+},
+{
+"id": "6ace4e120000000014032b90",
+"query": "AI运营小红书",
+"title": "在小红书用 AI，怎么不被当成托管号",
+"type": "normal",
+"likes": 3,
+"collects": 2,
+"comments": 2
+},
+{
+"id": "6a6180e70000000009035ee6",
+"query": "AI运营小红书",
+"title": "用Codex做小红书，这10个Skill一定要收藏",
+"type": "normal",
+"likes": 195,
+"collects": 305,
+"comments": 6
+},
+{
+"id": "69ff1a02000000003601aa8f",
+"query": "AI运营小红书",
+"title": "小红书图文排版AI一分钟速通版！",
+"type": "normal",
+"likes": 679,
+"collects": 683,
+"comments": 77
+},
+{
+"id": "6a99e833000000001103aec8",
+"query": "AI运营小红书",
+"title": "我是个AI，这个号从今天起我自己运营",
+"type": "normal",
+"likes": 2,
+"collects": 1,
+"comments": 12
+},
+{
+"id": "6ac0ea1e0000000018014727",
+"query": "拼豆手残",
+"title": "ChatGPT拼豆版",
+"type": "normal",
+"likes": 160,
+"collects": 176,
+"comments": 8
+},
+{
+"id": "6a257a81000000001503d4ec",
+"query": "拼豆手残",
+"title": "手残遇到困难就放弃",
+"type": "normal",
+"likes": 93,
+"collects": 9,
+"comments": 727
+},
+{
+"id": "6a0e7c900000000007013a99",
+"query": "拼豆手残",
+"title": "新手必看！30秒快速进阶拼豆老手艺人～",
+"type": "video",
+"likes": 4897,
+"collects": 2005,
+"comments": 48
+},
+{
+"id": "6a831106000000002701d008",
+"query": "拼豆手残",
+"title": "算法人有自己的拼豆",
+"type": "normal",
+"likes": 83,
+"collects": 85,
+"comments": 25
+},
+{
+"id": "69b92d9a000000001f002866",
+"query": "拼豆手残",
+"title": "拼豆别再规规矩矩排了！",
+"type": "normal",
+"likes": 249,
+"collects": 70,
+"comments": 3
+},
+{
+"id": "6ab679940000000018004d25",
+"query": "拼豆手残",
+"title": "终于拼好了🥹",
+"type": "normal",
+"likes": 59,
+"collects": 11,
+"comments": 33
+},
+{
+"id": "6ac48a3d000000001c02d9b2",
+"query": "拼豆手残",
+"title": "10min迷你拼豆小图！新手也能轻松完成！",
+"type": "normal",
+"likes": 247,
+"collects": 213,
+"comments": 29
+},
+{
+"id": "6974eedc000000000c03494b",
+"query": "拼豆手残",
+"title": "第一次拼豆大失败哈哈哈哈",
+"type": "normal",
+"likes": 18,
+"collects": 3,
+"comments": 12
+},
+{
+"id": "6a844099000000002403d002",
+"query": "拼豆手残",
+"title": "拼豆｜这谁顶得住啊！！！",
+"type": "normal",
+"likes": 127,
+"collects": 67,
+"comments": 13
+},
+{
+"id": "69cbda6a0000000028009425",
+"query": "拼豆手残",
+"title": "新手拼豆之 1/【？】",
+"type": "normal",
+"likes": 1129,
+"collects": 767,
+"comments": 72
+},
+{
+"id": "6a44de50000000001003f192",
+"query": "拼豆手残",
+"title": "拼豆图纸｜小猫我很臭吗？",
+"type": "normal",
+"likes": 386,
+"collects": 285,
+"comments": 24
+},
+{
+"id": "6ae00cff000000001503a386",
+"query": "拼豆手残",
+"title": "致每一位勇敢的小骑士🐱",
+"type": "normal",
+"likes": 473,
+"collects": 418,
+"comments": 10
+},
+{
+"id": "6aae4bf0000000000d024693",
+"query": "拼豆手残",
+"title": "如果秋天可以带走🍂｜大概就是这个样子",
+"type": "normal",
+"likes": 5145,
+"collects": 4659,
+"comments": 87
+},
+{
+"id": "6aabdcc0000000002600a37a",
+"query": "拼豆手残",
+"title": "这狗/牵我！",
+"type": "normal",
+"likes": 979,
+"collects": 1030,
+"comments": 20
+},
+{
+"id": "6aaeb3ee00000000120023fe",
+"query": "拼豆手残",
+"title": "被这暗夜蓝蝴蝶美到了🦋｜（附图纸）",
+"type": "normal",
+"likes": 2291,
+"collects": 1712,
+"comments": 46
+},
+{
+"id": "6a8674dd0000000023000bf1",
+"query": "拼豆手残",
+"title": "拼豆图纸|可爱的线条小狗～",
+"type": "normal",
+"likes": 8397,
+"collects": 6848,
+"comments": 126
+},
+{
+"id": "6a5b920c000000000f0335c7",
+"query": "拼豆手残",
+"title": "拼的一些豆③、④",
+"type": "normal",
+"likes": 5277,
+"collects": 4295,
+"comments": 35
+},
+{
+"id": "6a1a329d000000003700f5df",
+"query": "拼豆手残",
+"title": "拼豆之月薪喵",
+"type": "normal",
+"likes": 33337,
+"collects": 24519,
+"comments": 593
+},
+{
+"id": "6a9979be0000000025037c3b",
+"query": "拼豆手残",
+"title": "拼豆计划（2/100）|小新洗澡（附图纸）",
+"type": "normal",
+"likes": 2485,
+"collects": 1620,
+"comments": 19
+},
+{
+"id": "67c9a1600000000003029f63",
+"query": "拼豆手残",
+"title": "",
+"type": "video",
+"likes": 39662,
+"collects": 14611,
+"comments": 502
+},
+{
+"id": "6a844099000000002403d002",
+"query": "拼豆上头",
+"title": "拼豆｜这谁顶得住啊！！！",
+"type": "normal",
+"likes": 127,
+"collects": 67,
+"comments": 13
+},
+{
+"id": "6ac867da000000000a01d9f8",
+"query": "拼豆上头",
+"title": "拼豆为什么让年轻人上瘾",
+"type": "normal",
+"likes": 493,
+"collects": 215,
+"comments": 86
+},
+{
+"id": "6ac5a611000000001b02fed0",
+"query": "拼豆上头",
+"title": "拼豆是大脑在吃“补品”",
+"type": "normal",
+"likes": 3244,
+"collects": 931,
+"comments": 417
+},
+{
+"id": "6a19189a000000003501c24f",
+"query": "拼豆上头",
+"title": "为什么ADHD会对拼豆这么上头！",
+"type": "normal",
+"likes": 2490,
+"collects": 381,
+"comments": 325
+},
+{
+"id": "6ae583470000000018039c17",
+"query": "拼豆上头",
+"title": "我想这就是拼豆的意义",
+"type": "normal",
+"likes": 120,
+"collects": 7,
+"comments": 22
+},
+{
+"id": "6a96d98e000000002b01fcd1",
+"query": "拼豆上头",
+"title": "拼豆上头，竟然一下午没刷手机",
+"type": "normal",
+"likes": 14,
+"collects": 7,
+"comments": 2
+},
+{
+"id": "6aebf3b00000000003000383",
+"query": "拼豆上头",
+"title": "拼豆？！这么上头为什么",
+"type": "normal",
+"likes": 3,
+"collects": 0,
+"comments": 54
+},
+{
+"id": "6a241006000000001c02475b",
+"query": "拼豆上头",
+"title": "拼豆之我将化身为美食博主👍",
+"type": "normal",
+"likes": 2409,
+"collects": 859,
+"comments": 310
+},
+{
+"id": "6a6757b2000000001003fe81",
+"query": "拼豆上头",
+"title": "拼豆真的很上头",
+"type": "normal",
+"likes": 1280,
+"collects": 599,
+"comments": 308
+},
+{
+"id": "6ad236730000000018016a12",
+"query": "拼豆上头",
+"title": "已确诊为无时无刻想拼豆人格",
+"type": "normal",
+"likes": 108,
+"collects": 17,
+"comments": 29
+},
+{
+"id": "6aa6e6d80000000029019248",
+"query": "拼豆上头",
+"title": "",
+"type": "normal",
+"likes": 629,
+"collects": 58,
+"comments": 362
+},
+{
+"id": "6a20f61f000000003501d95e",
+"query": "拼豆上头",
+"title": "承认吧…拼豆真的会上头🤯",
+"type": "normal",
+"likes": 31,
+"collects": 10,
+"comments": 14
+},
+{
+"id": "6a2ad461000000001700bd30",
+"query": "拼豆上头",
+"title": "家有6岁小男孩染上拼豆怎么办？",
+"type": "normal",
+"likes": 12,
+"collects": 4,
+"comments": 0
+},
+{
+"id": "6a9d9a93000000002902f094",
+"query": "拼豆上头",
+"title": "再冷漠的女人收到大钻戒💍也会说我愿意",
+"type": "normal",
+"likes": 54,
+"collects": 43,
+"comments": 3
+},
+{
+"id": "6aec00900000000003001483",
+"query": "拼豆上头",
+"title": "拼豆真的上头，也没有说这么上头吧",
+"type": "normal",
+"likes": 3,
+"collects": 0,
+"comments": 55
+},
+{
+"id": "6ac661e10000000001009289",
+"query": "拼豆上头",
+"title": "噜噜！你怎么碎了噜噜！",
+"type": "normal",
+"likes": 4656,
+"collects": 651,
+"comments": 504
+},
+{
+"id": "69670d06000000001a01df15",
+"query": "拼豆上头",
+"title": "挑战100个拼豆（25/100）蜡笔小新「附图纸」",
+"type": "normal",
+"likes": 6434,
+"collects": 4559,
+"comments": 32
+},
+{
+"id": "6a83d99400000000330314c2",
+"query": "拼豆上头",
+"title": "",
+"type": "normal",
+"likes": 202,
+"collects": 73,
+"comments": 841
+},
+{
+"id": "6957cbaf000000001e00b3ac",
+"query": "拼豆上头",
+"title": "在广州🤯手残党也能封神！拼豆巨好玩！",
+"type": "normal",
+"likes": 1029,
+"collects": 422,
+"comments": 39
+},
+{
+"id": "6aa59333000000002802e537",
+"query": "拼豆上头",
+"title": "区区14万颗豆子拼完无非是舍利燃尽罢了",
+"type": "normal",
+"likes": 10402,
+"collects": 2706,
+"comments": 1162
+},
+{
+"id": "6aa7b66d000000002b01fa6c",
+"query": "第一次拼豆",
+"title": "拼豆新手进店前，先看完这篇避雷",
+"type": "normal",
+"likes": 6407,
+"collects": 3487,
+"comments": 194
+},
+{
+"id": "6a76abca000000003301e455",
+"query": "第一次拼豆",
+"title": "从30分钟到28小时⏰拼豆耗时对照表",
+"type": "normal",
+"likes": 644,
+"collects": 467,
+"comments": 76
+},
+{
+"id": "6a844099000000002403d002",
+"query": "第一次拼豆",
+"title": "拼豆｜这谁顶得住啊！！！",
+"type": "normal",
+"likes": 127,
+"collects": 67,
+"comments": 13
+},
+{
+"id": "6a22766f00000000220211ad",
+"query": "第一次拼豆",
+"title": "0基础第一次拼豆流程+注意事项！0社交不求人",
+"type": "video",
+"likes": 41430,
+"collects": 15169,
+"comments": 536
+},
+{
+"id": "69dcc0ff000000001a030eb6",
+"query": "第一次拼豆",
+"title": "",
+"type": "normal",
+"likes": 978,
+"collects": 502,
+"comments": 62
+},
+{
+"id": "6a863b2e000000002203f932",
+"query": "第一次拼豆",
+"title": "拼豆全流程",
+"type": "normal",
+"likes": 334,
+"collects": 176,
+"comments": 0
+},
+{
+"id": "6a4d3f2f0000000008026588",
+"query": "第一次拼豆",
+"title": "新手到店拼豆全流程体验",
+"type": "video",
+"likes": 31463,
+"collects": 14147,
+"comments": 199
+},
+{
+"id": "6a7871500000000022030153",
+"query": "第一次拼豆",
+"title": "新手宝宝保姆级拼豆教程",
+"type": "video",
+"likes": 32927,
+"collects": 20983,
+"comments": 242
+},
+{
+"id": "6a5769540000000015027b35",
+"query": "第一次拼豆",
+"title": "拼豆",
+"type": "normal",
+"likes": 1247,
+"collects": 674,
+"comments": 64
+},
+{
+"id": "6ac0ea1e0000000018014727",
+"query": "第一次拼豆",
+"title": "ChatGPT拼豆版",
+"type": "normal",
+"likes": 160,
+"collects": 176,
+"comments": 8
+},
+{
+"id": "6ac9ef34000000001400220d",
+"query": "第一次拼豆",
+"title": "保姆级｜拼豆图纸到底怎么看？",
+"type": "normal",
+"likes": 1,
+"collects": 0,
+"comments": 0
+},
+{
+"id": "6a5216290000000021018609",
+"query": "第一次拼豆",
+"title": "新手第一次拼豆2小时15分钟什么水平？",
+"type": "normal",
+"likes": 639,
+"collects": 278,
+"comments": 204
+},
+{
+"id": "6a0e7c900000000007013a99",
+"query": "第一次拼豆",
+"title": "新手必看！30秒快速进阶拼豆老手艺人～",
+"type": "video",
+"likes": 4897,
+"collects": 2005,
+"comments": 48
+},
+{
+"id": "6a8ac23700000000080125e1",
+"query": "第一次拼豆",
+"title": "拼豆｜新手小白的入门小tips",
+"type": "normal",
+"likes": 87,
+"collects": 41,
+"comments": 0
+},
+{
+"id": "6a3240b1000000001700befd",
+"query": "第一次拼豆",
+"title": "拼豆注意事项",
+"type": "normal",
+"likes": 93,
+"collects": 64,
+"comments": 13
+},
+{
+"id": "6a7211c2000000002402f926",
+"query": "第一次拼豆",
+"title": "拼豆初体验",
+"type": "normal",
+"likes": 52,
+"collects": 6,
+"comments": 35
+},
+{
+"id": "6a7160e20000000033031d6a",
+"query": "第一次拼豆",
+"title": "第一次拼豆千万不要拼这个豆橛子猫",
+"type": "normal",
+"likes": 257,
+"collects": 205,
+"comments": 135
+},
+{
+"id": "6a1da0ac0000000007013211",
+"query": "第一次拼豆",
+"title": "初次拼豆",
+"type": "normal",
+"likes": 1760,
+"collects": 1300,
+"comments": 112
+},
+{
+"id": "6abfe66c000000000200f4f6",
+"query": "第一次拼豆",
+"title": "拼豆烫豆怎么烫？新手必看！",
+"type": "normal",
+"likes": 3202,
+"collects": 1900,
+"comments": 2
+},
+{
+"id": "6a634942000000000301c4dc",
+"query": "第一次拼豆",
+"title": "求拼豆教程",
+"type": "normal",
+"likes": 1349,
+"collects": 505,
+"comments": 93
+}
+]
+}

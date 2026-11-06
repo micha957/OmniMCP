@@ -1,0 +1,22 @@
+<!doctype html>
+<meta charset="utf-8">
+<!-- One source and its real results, side by side, so the difference is the headline. -->
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1080px; height: 1440px; overflow: hidden; }
+  body { background: #f6f2ea; color: #2a2622; font-family: "PingFang SC", "Hiragino Sans GB", sans-serif; padding: 84px 56px 56px; }
+  h1 { font-size: 84px; line-height: 1.24; font-weight: 600; letter-spacing: -.005em; max-height: 230px; overflow: hidden; margin: 0 8px 52px; }
+  em { font-style: normal; color: #b4532f; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  figure { position: relative; aspect-ratio: 1; border-radius: 14px; overflow: hidden; background: #ece6da; }
+  img { width: 100%; height: 100%; object-fit: cover; display: block; image-rendering: pixelated; }
+  img.photo { image-rendering: auto; }
+  figcaption { position: absolute; left: 14px; bottom: 14px; padding: 6px 14px; border-radius: 8px; background: rgba(255, 252, 245, .94); font-size: 30px; font-weight: 500; line-height: 1.3; }
+</style>
+<h1 data-fit="title">{{title}}</h1>
+<div class="grid">
+  <figure><img class="photo" src="{{image_a}}" alt=""><figcaption>{{label_a}}</figcaption></figure>
+  <figure><img src="{{image_b}}" alt=""><figcaption>{{label_b}}</figcaption></figure>
+  <figure><img src="{{image_c}}" alt=""><figcaption>{{label_c}}</figcaption></figure>
+  <figure><img src="{{image_d}}" alt=""><figcaption>{{label_d}}</figcaption></figure>
+</div>

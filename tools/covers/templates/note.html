@@ -1,0 +1,18 @@
+<!doctype html>
+<meta charset="utf-8">
+<!-- A person's handwritten-feeling note: one sentence, lots of air. -->
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1080px; height: 1440px; overflow: hidden; }
+  body { background: #f4efe6; color: #2a2622; font-family: "Songti SC", "STSong", serif; position: relative; }
+  .paper { position: absolute; inset: 72px; background: #fbf8f1; border-radius: 6px; box-shadow: 0 1px 0 #e6dfd1, 0 24px 60px rgba(70, 55, 35, .10); padding: 96px 88px; display: flex; flex-direction: column; justify-content: space-between; }
+  .kicker { font: 500 32px/1 "PingFang SC", "Hiragino Sans GB", sans-serif; color: #a2937c; letter-spacing: .08em; }
+  h1 { font-size: 100px; line-height: 1.36; word-break: keep-all; font-weight: 700; letter-spacing: -.005em; max-height: 760px; overflow: hidden; }
+  em { font-style: normal; background: linear-gradient(transparent 80%, #eeb48c 80%, #eeb48c 90%, transparent 90%); }
+  .foot { font: 400 34px/1.5 "PingFang SC", "Hiragino Sans GB", sans-serif; color: #7b6f60; }
+</style>
+<div class="paper">
+  <div class="kicker">{{kicker}}</div>
+  <h1 data-fit="title">{{title}}</h1>
+  <div class="foot">{{foot}}</div>
+</div>
