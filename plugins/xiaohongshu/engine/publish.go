@@ -25,6 +25,7 @@ type PublishImageContent struct {
 	ImagePaths   []string
 	ScheduleTime *time.Time // 定时发布时间，nil 表示立即发布
 	IsOriginal   bool       // 是否声明原创
+	DeclareAI    bool       // 是否在内容设置里声明“笔记含AI合成内容”
 	Visibility   string     // 可见范围: "公开可见"(默认), "仅自己可见", "仅互关好友可见"
 	Products     []string   // 商品关键词列表，用于绑定带货商品
 }
@@ -94,7 +95,7 @@ func (p *PublishAction) Publish(ctx context.Context, content PublishImageContent
 
 	logrus.Infof("发布内容: title=%s, images=%v, tags=%v, schedule=%v, original=%v, visibility=%s, products=%v", content.Title, len(content.ImagePaths), tags, content.ScheduleTime, content.IsOriginal, content.Visibility, content.Products)
 
-	if err := submitPublish(ctx, page, content.Title, content.Content, tags, content.ScheduleTime, content.IsOriginal, content.Visibility, content.Products); err != nil {
+	if err := submitPublish(ctx, page, content.Title, content.Content, tags, content.ScheduleTime, content.IsOriginal, content.DeclareAI, content.Visibility, content.Products); err != nil {
 		return errors.Wrap(err, "小红书发布失败")
 	}
 
@@ -345,7 +346,66 @@ func waitForUploadComplete(page *rod.Page, expectedCount int) error {
 	return errors.Errorf("第%d张图片上传超时(60s)，请检查网络连接和图片大小", expectedCount)
 }
 
-func submitPublish(ctx context.Context, page *rod.Page, title, content string, tags []string, scheduleTime *time.Time, isOriginal bool, visibility string, products []string) error {
+// SameText compares text ignoring whitespace, because the editor stores blank
+// lines as paragraphs and reads them back differently.
+func SameText(got, want string) bool {
+	strip := func(s string) string { return strings.Join(strings.Fields(s), "") }
+	return strip(got) == strip(want)
+}
+
+const (
+	aiDeclarePlaceholder = "添加内容类型声明"
+	aiDeclareOption      = "笔记含AI合成内容"
+)
+
+// DeclareAIContent picks the platform's AI declaration. The platform limits
+// undeclared AI content, so a declaration that cannot be set stops the publish.
+func DeclareAIContent(page *rod.Page) error {
+	res, err := page.Eval(`async (placeholder, option) => {
+		const leaf = (text) => [...document.querySelectorAll('*')].filter(e => e.children.length <= 2 && (e.innerText || '').trim() === text).pop();
+		const trigger = leaf(placeholder);
+		if (!trigger) return 'no-trigger';
+		trigger.scrollIntoView({block: 'center'});
+		trigger.click();
+		await new Promise(r => setTimeout(r, 800));
+		const item = [...document.querySelectorAll('.d-option')].find(e => (e.innerText || '').trim() === option);
+		if (!item) return 'no-option';
+		item.click();
+		await new Promise(r => setTimeout(r, 800));
+		return leaf(placeholder) ? 'not-applied' : 'ok';
+	}`, aiDeclarePlaceholder, aiDeclareOption)
+	if err != nil {
+		return errors.Wrap(err, "设置 AI 声明失败，已中止发布")
+	}
+	if got := res.Value.String(); got != "ok" {
+		return errors.Errorf("设置 AI 声明失败（%s），已中止发布，没有提交", got)
+	}
+	return nil
+}
+
+// verifyFormContent is the last check before publishing: what is in the form must
+// be what the person approved. Tags are appended after the body by inputTags, so
+// the body only has to match from the start.
+func verifyFormContent(titleElem, contentElem *rod.Element, title, content string) error {
+	gotTitle, err := titleElem.Property("value")
+	if err != nil {
+		return errors.Wrap(err, "读回标题失败，已中止发布")
+	}
+	if !SameText(gotTitle.String(), title) {
+		return errors.Errorf("表单标题与确认内容不一致，已中止发布：%q", gotTitle.String())
+	}
+	gotBody, err := contentElem.Text()
+	if err != nil {
+		return errors.Wrap(err, "读回正文失败，已中止发布")
+	}
+	strip := func(s string) string { return strings.Join(strings.Fields(s), "") }
+	if !strings.HasPrefix(strip(gotBody), strip(content)) {
+		return errors.Errorf("表单正文与确认内容不一致，已中止发布，没有提交")
+	}
+	return nil
+}
+
+func submitPublish(ctx context.Context, page *rod.Page, title, content string, tags []string, scheduleTime *time.Time, isOriginal, declareAI bool, visibility string, products []string) error {
 	titleElem, err := page.Element("div.d-input input")
 	if err != nil {
 		return errors.Wrap(err, "查找标题输入框失败")
@@ -366,7 +426,7 @@ func submitPublish(ctx context.Context, page *rod.Page, title, content string, t
 	if err != nil {
 		return err
 	}
-	if err := humanize.Type(ctx, contentElem, content); err != nil {
+	if err := humanize.Paste(ctx, contentElem, content); err != nil {
 		return errors.Wrap(err, "输入正文失败")
 	}
 	closeFeatureGuide(page)
@@ -405,6 +465,16 @@ func submitPublish(ctx context.Context, page *rod.Page, title, content string, t
 
 	if err := bindProducts(ctx, page, products); err != nil {
 		return errors.Wrap(err, "绑定商品失败")
+	}
+
+	if declareAI {
+		if err := DeclareAIContent(page); err != nil {
+			return err
+		}
+	}
+
+	if err := verifyFormContent(titleElem, contentElem, title, content); err != nil {
+		return err
 	}
 
 	if err := clickPublishButton(page); err != nil {

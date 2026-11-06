@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -25,13 +26,19 @@ type Tool struct {
 	Name        string          `json:"name"`
 	Description string          `json:"description"`
 	InputSchema json.RawMessage `json:"inputSchema"`
-	Mutating    bool            `json:"-"`
-	Confirm     bool            `json:"-"`
+	// Mutating tools change platform state. The runtime never runs them directly:
+	// each call becomes a proposal that a person must approve first.
+	Mutating bool `json:"-"`
 	// Timeout overrides the runtime default for long browser workflows.
 	Timeout time.Duration `json:"-"`
 }
 
 type Account struct{ PluginID, AccountID string }
+
+// ErrOutcomeUnknown marks a write whose result could not be confirmed after it
+// may already have reached the platform. Wrap it so the action is reported as
+// unknown and a person checks the platform before anything is sent again.
+var ErrOutcomeUnknown = errors.New("平台结果未确认")
 
 type Browser interface {
 	Open(context.Context, string) error
@@ -62,7 +69,6 @@ type Context struct {
 	Browser   Browser
 	Auth      Auth
 	Logger    *slog.Logger
-	Confirm   func(context.Context, string) error
 	RequestID any
 	ToolName  string
 	Artifacts ArtifactStore

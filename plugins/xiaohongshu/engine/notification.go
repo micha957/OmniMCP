@@ -316,6 +316,34 @@ func (r rawNotification) visible() bool {
 	return true
 }
 
+// NotificationStatus 说明一次读取覆盖到哪里。
+type NotificationStatus struct {
+	Loaded  int
+	HasMore bool
+}
+
+// ParseNotifications 解析页面状态里单个分区的原始数据，供扩展连接器使用。
+func ParseNotifications(raw []byte, limit int) (*NotificationList, NotificationStatus, error) {
+	var payload notificationPayload
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return nil, NotificationStatus{}, fmt.Errorf("解析通知列表失败: %w", err)
+	}
+	if limit <= 0 {
+		limit = 20
+	}
+	items, filtered := convertNotifications(payload.MessageList, limit)
+	return &NotificationList{Filtered: filtered, Items: items}, NotificationStatus{Loaded: len(payload.MessageList), HasMore: payload.HasMore}, nil
+}
+
+// ParseNotificationCount 解析页面状态里的未读数。
+func ParseNotificationCount(raw []byte) (*NotificationCount, error) {
+	var count rawCount
+	if err := json.Unmarshal(raw, &count); err != nil {
+		return nil, fmt.Errorf("解析未读数失败: %w", err)
+	}
+	return &NotificationCount{Mentions: count.Mentions, Likes: count.Likes, Connections: count.Connections, Unread: count.Unread}, nil
+}
+
 // convertNotifications 过滤掉不可见条目并转成对外结构，返回条目和被过滤的数量。
 func convertNotifications(raw []rawNotification, limit int) ([]NotificationItem, int) {
 	items := make([]NotificationItem, 0, len(raw))

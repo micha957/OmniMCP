@@ -28,5 +28,6 @@ func (MyPlugin) Tools() []plugin.Tool {
 
 - 优先读页面自带的结构化数据：`ReadGlobal("ytInitialData")`、`ReadScriptJSON("#__UNIVERSAL_DATA_FOR_REHYDRATION__")`。
 - 列表用 `ExtractList` / `ExtractUntil` 声明选择器抽取，不需要在插件里写页面 JavaScript。
-- 写操作在执行前读取状态、执行后确认结果；评论可直接用 `plugin.PostComment`。
+- 写操作设置 `Mutating: true`，运行时会先让人确认，再用存下的参数调用 `Execute`，插件无需处理确认。
+- 写操作在执行前读取状态、执行后确认结果；评论可直接用 `plugin.PostComment`。点击提交后无法确认结果时，包装 `plugin.ErrOutcomeUnknown` 返回，这样不会被当作普通失败重试。
 - 测试用 `plugin/plugintest.Page` 模拟页面。

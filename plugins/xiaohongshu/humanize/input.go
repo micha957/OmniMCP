@@ -160,6 +160,22 @@ func ClickAt(page *rod.Page, pt proto.Point) error {
 	return pressAndRelease(page.Mouse)
 }
 
+// Paste inserts text in one step. Long text must not be typed key by key into a
+// rich-text editor: anything that re-renders it mid-way moves the caret, and the
+// remaining characters land in the wrong place.
+func Paste(ctx context.Context, elem *rod.Element, text string) error {
+	if err := elem.Focus(); err != nil {
+		return err
+	}
+	if err := elem.WaitEnabled(); err != nil {
+		return err
+	}
+	if err := elem.WaitWritable(); err != nil {
+		return err
+	}
+	return elem.Page().Context(ctx).InsertText(text)
+}
+
 func Type(ctx context.Context, elem *rod.Element, text string) error {
 	dist := defaultProvider.Timing()[Keystroke]
 

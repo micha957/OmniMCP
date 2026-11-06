@@ -25,6 +25,9 @@ type Config struct {
 	Comment     plugin.CommentFlow
 	// Creator enables publish_video through the platform's creator centre.
 	Creator *plugin.CreatorFlow
+	// CreatorAccount enables login and account data tools; so far only Douyin's
+	// creator centre has endpoints checked against a real account.
+	CreatorAccount bool
 }
 
 type Plugin struct{ Config }
@@ -40,8 +43,13 @@ func (p *Plugin) Tools() []plugin.Tool {
 		{Name: "open", Description: "打开" + p.Name + "网页", InputSchema: plugin.ToolSchema(`{"url":{"type":"string","format":"uri"}}`, []string{"url"})},
 		{Name: "snapshot", Description: "读取当前" + p.Name + "页面", InputSchema: plugin.ToolSchema(`{}`, nil)},
 		{Name: "get_detail", Description: "读取" + p.Name + "内容详情页文本", InputSchema: plugin.ToolSchema(`{"id":{"type":"string"}}`, []string{"id"})},
-		{Name: "like", Description: "点赞" + p.Name + "内容；能读到点赞状态时会确认结果", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"id":{"type":"string"}}`, []string{"id"})},
-		{Name: "comment", Description: "评论" + p.Name + "内容，提交后在页面上确认评论出现", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"id":{"type":"string"},"content":{"type":"string"}}`, []string{"id", "content"})},
+		{Name: "like", Description: "点赞" + p.Name + "内容；能读到点赞状态时会确认结果", Mutating: true, InputSchema: plugin.ToolSchema(`{"id":{"type":"string"}}`, []string{"id"})},
+		{Name: "comment", Description: "评论" + p.Name + "内容，提交后在页面上确认评论出现", Mutating: true, InputSchema: plugin.ToolSchema(`{"id":{"type":"string"},"content":{"type":"string"}}`, []string{"id", "content"})},
+	}
+	if p.CreatorAccount {
+		tools = append(tools,
+			plugin.Tool{Name: "check_login", Description: "检查" + p.Name + "创作者中心登录状态，返回当前用户", InputSchema: plugin.ToolSchema(`{}`, nil)},
+			plugin.Tool{Name: "get_my_account", Description: "读取" + p.Name + "账号粉丝数和作品的播放、点赞、收藏、评论、分享数据", InputSchema: plugin.ToolSchema(`{}`, nil)})
 	}
 	if f := p.Creator; f != nil {
 		props := `{"file_path":{"type":"string","description":"本机视频绝对路径"},"content":{"type":"string","description":"简介/文案，可含 #话题"},"mode":{"type":"string","enum":["publish","draft"]}`
@@ -52,7 +60,7 @@ func (p *Plugin) Tools() []plugin.Tool {
 		if len(f.Title) > 0 {
 			props += fmt.Sprintf(`,"title":{"type":"string","maxLength":%d}`, f.TitleMax)
 		}
-		tools = append(tools, plugin.Tool{Name: "publish_video", Description: desc, Mutating: true, Confirm: true, Timeout: 20 * time.Minute,
+		tools = append(tools, plugin.Tool{Name: "publish_video", Description: desc, Mutating: true, Timeout: 20 * time.Minute,
 			InputSchema: plugin.ToolSchema(props+"}", []string{"file_path", "mode"})})
 	}
 	return tools
@@ -74,6 +82,10 @@ func (p *Plugin) Execute(ctx context.Context, c *plugin.Context, name string, ra
 		return nil, err
 	}
 	switch name {
+	case "check_login":
+		return douyinCheckLogin(ctx, c)
+	case "get_my_account":
+		return douyinAccount(ctx, c)
 	case "search":
 		if strings.TrimSpace(in.Keyword) == "" {
 			return nil, fmt.Errorf("keyword is required")

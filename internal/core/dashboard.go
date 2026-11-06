@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-//go:embed web/index.html
+//go:embed web/index.html web/approvals.html
 var dashboardFS embed.FS
 
 type Dashboard struct {
@@ -39,6 +39,9 @@ func (d *Dashboard) Handler() http.Handler {
 	mux.HandleFunc("/api/accounts/login", d.login)
 	mux.HandleFunc("/mcp", d.mcp)
 	mux.HandleFunc("/healthz", d.health)
+	if d.Server.Approvals != nil {
+		d.registerApprovals(mux)
+	}
 	if d.Server.Extensions != nil {
 		mux.HandleFunc("/extension/ws", d.Server.Extensions.HandleWS)
 		mux.HandleFunc("/api/extensions", func(w http.ResponseWriter, r *http.Request) {

@@ -17,7 +17,7 @@ type Plugin struct{}
 
 func New() *Plugin { return &Plugin{} }
 func (p *Plugin) Manifest() plugin.Manifest {
-	return plugin.Manifest{ID: "xiaohongshu", Name: "小红书", Version: "0.1.0", APIVersion: "v1", RequiresBrowser: true, BrowserMode: "extension", LoginURL: "https://www.xiaohongshu.com/explore", CookieDomains: []string{"xiaohongshu.com"}, Capabilities: []string{"login", "search", "detail", "publish", "comment", "like", "favorite"}}
+	return plugin.Manifest{ID: "xiaohongshu", Name: "小红书", Version: "0.1.0", APIVersion: "v1", RequiresBrowser: true, BrowserMode: "extension", LoginURL: "https://www.xiaohongshu.com/explore", CookieDomains: []string{"xiaohongshu.com"}, Capabilities: []string{"login", "search", "detail", "publish", "comment", "reply", "notifications", "analytics", "like", "favorite"}}
 }
 func (p *Plugin) Tools() []plugin.Tool {
 	return []plugin.Tool{
@@ -26,11 +26,15 @@ func (p *Plugin) Tools() []plugin.Tool {
 		{Name: "list_feeds", Description: "获取首页推荐笔记", InputSchema: plugin.ToolSchema(`{"limit":{"type":"integer","minimum":1,"maximum":50}}`, nil)},
 		{Name: "get_note_detail", Description: "获取笔记详情（正文、图片、互动数据）和首屏评论；load_comments=true 时继续滚动加载更多评论", Timeout: 3 * time.Minute, InputSchema: plugin.ToolSchema(`{"feed_id":{"type":"string"},"xsec_token":{"type":"string"},"load_comments":{"type":"boolean"}}`, []string{"feed_id", "xsec_token"})},
 		{Name: "get_user_profile", Description: "获取用户主页信息和笔记列表；tab 可选 note/fav/liked", InputSchema: plugin.ToolSchema(`{"user_id":{"type":"string"},"xsec_token":{"type":"string"},"tab":{"type":"string","enum":["note","fav","liked"]}}`, []string{"user_id", "xsec_token"})},
-		{Name: "publish_note", Description: "发布图文笔记：mode=publish 直接公开发布，mode=draft 暂存到草稿箱（仅扩展模式）。images 为本机图片绝对路径", Mutating: true, Confirm: true, Timeout: 5 * time.Minute, InputSchema: plugin.ToolSchema(`{"title":{"type":"string","maxLength":20},"content":{"type":"string","maxLength":1000},"images":{"type":"array","items":{"type":"string"},"minItems":1,"maxItems":18},"tags":{"type":"array","items":{"type":"string"},"description":"话题标签，仅 managed 模式支持"},"mode":{"type":"string","enum":["publish","draft"]}}`, []string{"title", "content", "images", "mode"})},
-		{Name: "publish_video", Description: "发布视频笔记：mode=publish 直接公开发布，mode=draft 暂存到草稿箱（仅扩展模式）。video 为本机视频绝对路径", Mutating: true, Confirm: true, Timeout: 20 * time.Minute, InputSchema: plugin.ToolSchema(`{"title":{"type":"string","maxLength":20},"content":{"type":"string","maxLength":1000},"video":{"type":"string"},"tags":{"type":"array","items":{"type":"string"},"description":"话题标签，仅 managed 模式支持"},"mode":{"type":"string","enum":["publish","draft"]}}`, []string{"title", "content", "video", "mode"})},
-		{Name: "post_comment", Description: "发表评论，并在评论区确认评论已出现", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"feed_id":{"type":"string"},"xsec_token":{"type":"string"},"content":{"type":"string"}}`, []string{"feed_id", "xsec_token", "content"})},
-		{Name: "like_note", Description: "点赞或取消点赞（unlike=true），以页面状态确认结果", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"feed_id":{"type":"string"},"xsec_token":{"type":"string"},"unlike":{"type":"boolean"}}`, []string{"feed_id", "xsec_token"})},
-		{Name: "favorite_note", Description: "收藏或取消收藏（unfavorite=true），以页面状态确认结果", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"feed_id":{"type":"string"},"xsec_token":{"type":"string"},"unfavorite":{"type":"boolean"}}`, []string{"feed_id", "xsec_token"})},
+		{Name: "get_notifications", Description: "读取通知：tab 可选 mentions（评论和@，默认）/likes（赞和收藏）/connections（新增关注）。complete=false 表示还有未读取的条目，不能当作没有新消息", Timeout: 3 * time.Minute, InputSchema: plugin.ToolSchema(`{"tab":{"type":"string","enum":["mentions","likes","connections"]},"limit":{"type":"integer","minimum":1,"maximum":50}}`, nil)},
+		{Name: "get_unread_count", Description: "读取三个通知分区的未读数", InputSchema: plugin.ToolSchema(`{}`, nil)},
+		{Name: "get_my_account", Description: "读取当前登录账号的粉丝、获赞数据和已发布笔记的互动数据", InputSchema: plugin.ToolSchema(`{}`, nil)},
+		{Name: "publish_note", Description: "发布图文笔记：mode=publish 直接公开发布，mode=draft 暂存到草稿箱（仅扩展模式）。images 为本机图片绝对路径", Mutating: true, Timeout: 5 * time.Minute, InputSchema: plugin.ToolSchema(`{"title":{"type":"string","maxLength":20},"content":{"type":"string","maxLength":1000},"images":{"type":"array","items":{"type":"string"},"minItems":1,"maxItems":18},"tags":{"type":"array","items":{"type":"string"},"description":"话题标签，仅 managed 模式支持"},"declare_ai":{"type":"boolean","description":"声明笔记含 AI 合成内容；设置失败会中止发布"},"mode":{"type":"string","enum":["publish","draft"]}}`, []string{"title", "content", "images", "mode"})},
+		{Name: "publish_video", Description: "发布视频笔记：mode=publish 直接公开发布，mode=draft 暂存到草稿箱（仅扩展模式）。video 为本机视频绝对路径", Mutating: true, Timeout: 20 * time.Minute, InputSchema: plugin.ToolSchema(`{"title":{"type":"string","maxLength":20},"content":{"type":"string","maxLength":1000},"video":{"type":"string"},"tags":{"type":"array","items":{"type":"string"},"description":"话题标签，仅 managed 模式支持"},"declare_ai":{"type":"boolean","description":"声明笔记含 AI 合成内容；设置失败会中止发布"},"mode":{"type":"string","enum":["publish","draft"]}}`, []string{"title", "content", "video", "mode"})},
+		{Name: "post_comment", Description: "发表评论，并在评论区确认评论已出现", Mutating: true, InputSchema: plugin.ToolSchema(`{"feed_id":{"type":"string"},"xsec_token":{"type":"string"},"content":{"type":"string"}}`, []string{"feed_id", "xsec_token", "content"})},
+		{Name: "reply_comment", Description: "回复指定评论，comment_id 来自 get_notifications 或笔记详情；确认回复出现后返回新评论的 comment_id", Mutating: true, Timeout: 3 * time.Minute, InputSchema: plugin.ToolSchema(`{"feed_id":{"type":"string"},"xsec_token":{"type":"string"},"comment_id":{"type":"string"},"content":{"type":"string"}}`, []string{"feed_id", "xsec_token", "comment_id", "content"})},
+		{Name: "like_note", Description: "点赞或取消点赞（unlike=true），以页面状态确认结果", Mutating: true, InputSchema: plugin.ToolSchema(`{"feed_id":{"type":"string"},"xsec_token":{"type":"string"},"unlike":{"type":"boolean"}}`, []string{"feed_id", "xsec_token"})},
+		{Name: "favorite_note", Description: "收藏或取消收藏（unfavorite=true），以页面状态确认结果", Mutating: true, InputSchema: plugin.ToolSchema(`{"feed_id":{"type":"string"},"xsec_token":{"type":"string"},"unfavorite":{"type":"boolean"}}`, []string{"feed_id", "xsec_token"})},
 	}
 }
 
@@ -41,6 +45,7 @@ type input struct {
 	FeedID       string   `json:"feed_id"`
 	XSecToken    string   `json:"xsec_token"`
 	UserID       string   `json:"user_id"`
+	CommentID    string   `json:"comment_id"`
 	Tab          string   `json:"tab"`
 	Limit        int      `json:"limit"`
 	Images       []string `json:"images"`
@@ -50,6 +55,7 @@ type input struct {
 	LoadComments bool     `json:"load_comments"`
 	Unlike       bool     `json:"unlike"`
 	Unfavorite   bool     `json:"unfavorite"`
+	DeclareAI    bool     `json:"declare_ai"`
 }
 
 // validate checks arguments before any page is opened, for both connectors.
@@ -72,6 +78,18 @@ func (in *input) validate(name string) error {
 			return fmt.Errorf("content is required")
 		}
 		return needNote()
+	case "reply_comment":
+		if strings.TrimSpace(in.Content) == "" {
+			return fmt.Errorf("content is required")
+		}
+		if !commentIDPattern.MatchString(in.CommentID) {
+			return fmt.Errorf("comment_id is invalid")
+		}
+		return needNote()
+	case "get_notifications":
+		if _, err := engine.ParseNotificationTab(in.Tab); err != nil {
+			return err
+		}
 	case "get_user_profile":
 		if in.UserID == "" || in.XSecToken == "" {
 			return fmt.Errorf("user_id and xsec_token are required")
@@ -114,6 +132,16 @@ func (in *input) validate(name string) error {
 func ex(ctx context.Context, b *browser.RodBrowser) error {
 	return b.Open(ctx, "https://www.xiaohongshu.com/explore")
 }
+
+// publishError keeps a refusal before submit as a plain failure; any other engine
+// error may come after the publish click, so the post may exist.
+func publishError(err error) error {
+	if strings.Contains(err.Error(), "已中止发布") {
+		return err
+	}
+	return fmt.Errorf("%w: %w", plugin.ErrOutcomeUnknown, err)
+}
+
 func limitFeeds(v []engine.Feed, n int) []engine.Feed {
 	if len(v) > n {
 		return v[:n]
@@ -129,6 +157,11 @@ func (p *Plugin) Execute(ctx context.Context, c *plugin.Context, name string, ra
 		return nil, err
 	}
 	b, managed := c.Browser.(*browser.RodBrowser)
+	switch name {
+	case "post_comment", "reply_comment", "get_notifications", "get_unread_count", "get_my_account":
+		// These run on the page abstraction so both connectors return the same receipts.
+		managed = false
+	}
 	if !managed {
 		return p.executeExtension(ctx, c, name, in)
 	}
@@ -183,27 +216,23 @@ func (p *Plugin) Execute(ctx context.Context, c *plugin.Context, name string, ra
 			if e != nil {
 				return nil, e
 			}
-			if e = a.PublishVideo(ctx, engine.PublishVideoContent{Title: in.Title, Content: in.Content, Tags: in.Tags, VideoPath: in.Video}); e != nil {
-				return nil, e
+			if e = a.PublishVideo(ctx, engine.PublishVideoContent{Title: in.Title, Content: in.Content, Tags: in.Tags, VideoPath: in.Video, DeclareAI: in.DeclareAI}); e != nil {
+				return nil, publishError(e)
 			}
-			return map[string]any{"status": "published", "title": in.Title, "video": in.Video}, nil
+			out := map[string]any{"status": "published", "title": in.Title, "video": in.Video}
+			addNoteReceipt(ctx, c, out, in.Title)
+			return out, nil
 		}
 		a, e := engine.NewPublishImageAction(b.Page())
 		if e != nil {
 			return nil, e
 		}
-		if e = a.Publish(ctx, engine.PublishImageContent{Title: in.Title, Content: in.Content, Tags: in.Tags, ImagePaths: in.Images}); e != nil {
-			return nil, e
+		if e = a.Publish(ctx, engine.PublishImageContent{Title: in.Title, Content: in.Content, Tags: in.Tags, ImagePaths: in.Images, DeclareAI: in.DeclareAI}); e != nil {
+			return nil, publishError(e)
 		}
-		return map[string]any{"status": "published", "title": in.Title, "image_count": len(in.Images)}, nil
-	case "post_comment":
-		if err = ex(ctx, b); err != nil {
-			return nil, err
-		}
-		if err = engine.NewCommentFeedAction(b.Page()).PostComment(ctx, in.FeedID, in.XSecToken, in.Content); err != nil {
-			return nil, err
-		}
-		return map[string]any{"success": true}, nil
+		out := map[string]any{"status": "published", "title": in.Title, "image_count": len(in.Images)}
+		addNoteReceipt(ctx, c, out, in.Title)
+		return out, nil
 	case "like_note":
 		if err = ex(ctx, b); err != nil {
 			return nil, err

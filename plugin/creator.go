@@ -221,7 +221,8 @@ func RunCreatorFlow(ctx context.Context, p *Page, f CreatorFlow, post CreatorPos
 	}
 	evidence, err := p.AwaitOutcome(ctx, formURL, f.RedirectOnSuccess, texts, confirm, 90*time.Second)
 	if err != nil {
-		return nil, err
+		// The submit button was already clicked, so the post may exist.
+		return nil, fmt.Errorf("%w: %w", ErrOutcomeUnknown, err)
 	}
 	u, _ := p.CurrentURL(ctx)
 	return map[string]any{"success": true, "status": status, "evidence": evidence, "url": u}, nil

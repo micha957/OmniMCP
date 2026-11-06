@@ -42,8 +42,8 @@ MCP 实现：协议版本协商（2025-06-18 / 2025-03-26 / 2024-11-05）、`pin
 
 ## 已接入能力
 
-- 小红书：登录检查、搜索、推荐、笔记详情和评论、用户主页、图文发布（`publish_note`，直接发布）、评论、点赞、收藏。扩展模式从页面 `__INITIAL_STATE__` 读取结构化数据，与 managed 模式返回格式一致；写操作以页面状态确认结果
-- B 站：搜索、视频详情、评论、UP 主视频、发表评论
+- 小红书：登录检查、搜索、推荐、笔记详情和评论、用户主页、通知读取、账号数据、图文发布（`publish_note`）、评论并返回回执、回复指定评论、点赞、收藏。扩展模式从页面 `__INITIAL_STATE__` 读取结构化数据，与 managed 模式返回格式一致；写操作以页面状态确认结果
+- B 站：登录检查、搜索、视频详情、评论、UP 主视频、消息中心、账号和稿件数据、发表评论、回复指定评论
 - 微信公众号：AccessToken、图片上传、图文草稿
 - 知乎：作者文章目录、文章正文、搜索、问题/回答/文章详情、赞同和评论（提交后确认）、文章编辑器填写
 - 抖音、快手、微博：搜索、打开、页面读取、详情、点赞、评论（评论提交后确认；抖音、快手无法读取点赞状态，返回 `verified:false`）
@@ -61,7 +61,31 @@ YouTube 和 TikTok 需要浏览器能直接访问对应站点。视频上传按 
 
 当前插件采用编译期注册；独立安装和热加载尚未实现。网页流程依赖平台页面结构及登录状态，选择器随平台改版可能失效，失败时工具返回明确错误而不是假成功。小红书扩展模式的发布暂不支持话题、定时、原创声明等选项（managed 模式支持话题），详见 [docs/SELF_HOSTED.md](docs/SELF_HOSTED.md)。
 
-扩展复用所在 Chrome Profile 的登录态。平台和账号 ID 用于连接路由；同一平台的多个真实账号需要使用不同 Chrome Profile。`managed` 模式由服务端为平台和账号创建独立 Chromium Profile。
+扩展复用所在 Chrome Profile 的登录态。平台和账号 ID 用于连接路由；同一平台的多个真实账号需要使用不同 Chrome Profile。
+
+`managed` 模式只运行一个真实浏览器（优先使用已安装的 Google Chrome，配置在 `data/profiles/shared`），每个平台一个标签页。服务重启后通过固定调试端口连回原来的浏览器和标签页，不会重新启动。各标签页共享 Cookie，所以每个平台只能登录一个账号，用其他账号 ID 调用会报错；需要同平台多账号时请用扩展模式。调试端口只监听本机，但能控制这个浏览器里的所有登录账号，并且不经过确认队列，所以不要在不信任的本机进程旁运行。
+
+## 确认队列
+
+写操作（发布、评论、点赞、通用浏览器的点击和输入等）不会立即执行。调用后进入确认队列，返回 `approval_id`，由人在 `http://127.0.0.1:8090/approvals` 或 `omni approvals approve <id>` 确认后，服务端再按原内容执行一次。结果用 `omnimcp_approval_status` 查询，确认失败或超时的操作标记为“结果不明”，不会自动重试。详见 [docs/AGENTOPS.md](docs/AGENTOPS.md)。
+
+账号所有者可以用 `OMNIMCP_AUTO_APPROVE`（如 `xiaohongshu_publish_note:2`，工具名:24 小时上限）让指定工具不经确认直接执行。相同内容不重发，结果不明不自动重试，超过上限的回到待确认，操作记录照常保留。
+
+确认接口默认只接受本机请求，`OMNIMCP_API_TOKEN` 打不开它。需要远程确认，或 AI 能在本机执行命令时，请设置 `OMNIMCP_APPROVAL_TOKEN`。
+
+## 命令行
+
+`omni` 是运行中服务的命令行入口，命令和参数由工具定义自动生成：
+
+```bash
+go build -o bin/omni ./cmd/omni
+bin/omni tools xiaohongshu
+bin/omni xiaohongshu search-notes --keyword 拼豆 --account main
+bin/omni xiaohongshu reply-comment --help
+bin/omni approvals list --status pending
+```
+
+结果以 JSON 输出到 stdout。退出码：0 成功，1 工具失败，2 用法错误，3 已进入确认队列（尚未执行），4 无法连接服务。
 
 ## 发布与草稿
 
@@ -86,12 +110,21 @@ YouTube 和 TikTok 需要浏览器能直接访问对应站点。视频上传按 
 | --- | --- |
 | `OMNIMCP_WEB_ADDR` | 控制台和 HTTP MCP 监听地址 |
 | `OMNIMCP_API_TOKEN` | HTTP MCP、扩展连接认证 |
-| `OMNIMCP_BROWSER_MODE` | `extension` 使用 Chrome 扩展；`managed` 使用独立 Chromium |
-| `OMNIMCP_HEADLESS` | 独立 Chromium 是否无头运行 |
+| `OMNIMCP_APPROVAL_TOKEN` | 确认接口口令；不要提供给 AI 客户端 |
+| `OMNIMCP_BROWSER_MODE` | `extension` 使用 Chrome 扩展；其他取值使用服务端管理的共享浏览器 |
+| `OMNIMCP_HEADLESS` | 共享浏览器是否无头运行；需要登录时设为 `false` |
+| `OMNIMCP_CHROME_PORT` | 共享浏览器的本机调试端口，默认 9333 |
+| `OMNIMCP_CHROME_BIN` | 浏览器程序路径，默认优先使用 Google Chrome |
 | `OMNIMCP_DATA_DIR` | 账号配置和浏览器数据目录 |
 | `OMNIMCP_ARTIFACT_DIR` | 临时素材目录 |
 
 微信公众号默认读取 `WECHAT_APP_ID` / `WECHAT_APP_SECRET`，也支持按账号配置。B 站兼容 `BILIBILI_COOKIE`，网页模式下优先读取扩展浏览器 Cookie。
+
+## 账号运营工作台
+
+运行 `go run ./cmd/agentops`，打开 `http://127.0.0.1:8091`。独立工作台提供产品角色配置、帖子收集、通知导入、模型准备草稿、确认队列、内容日历、数据复盘、素材库和跨平台改写，初始包含拼豆工坊的产品知识与三篇上线前笔记草稿。
+
+AI 只负责准备内容，平台操作都要经你确认。使用方式见 [docs/AGENTOPS.md](docs/AGENTOPS.md)。
 
 ## 开发插件
 
@@ -114,4 +147,5 @@ go test ./...
 go vet ./...
 node --test extension/*.test.*
 go build -o bin/omnimcp ./cmd/omnimcp
+go build -o bin/omni ./cmd/omni
 ```

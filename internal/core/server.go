@@ -28,9 +28,13 @@ type Server struct {
 	Sessions   *SessionManager
 	Extensions *ExtensionManager
 	Artifacts  plugin.ArtifactStore
-	// Confirm is called before mutating tools. A host application can replace it
-	// with an approval UI, policy engine, or an audit-backed decision.
-	Confirm func(context.Context, plugin.Tool, string) error
+	// Approvals receives every mutating tool call. Without it writes are refused,
+	// so a missing queue can never mean "run without asking".
+	Approvals    *ApprovalStore
+	approvalRuns sync.WaitGroup
+	// Auto lists the tools the owner chose to run without a confirmation click.
+	Auto   AutoPolicy
+	autoMu sync.Mutex
 
 	// accountLocks serialises browser tools per plugin/account: both connectors
 	// drive a single tab per account, so concurrent calls would interleave.
@@ -108,7 +112,7 @@ func (s *Server) initialize(req request) response {
 		"protocolVersion": version,
 		"capabilities":    map[string]any{"tools": map[string]any{"listChanged": false}},
 		"serverInfo":      map[string]string{"name": "omnimcp", "version": "0.2.0"},
-		"instructions":    "工具名为 <平台>_<动作>。所有工具都接受可选参数 _account_id 选择平台账号（默认 default）。写操作（发布、评论、点赞等）会真实作用于平台账号。",
+		"instructions":    "工具名为 <平台>_<动作>。所有工具都接受可选参数 _account_id 选择平台账号（默认 default）。写操作（发布、评论、点赞等）不会立即执行：调用后进入待确认队列并返回 approval_id，用户确认后由服务端执行，结果用 omnimcp_approval_status 查询。可用 _note 向用户说明这项操作的依据。",
 	}, nil}
 }
 
@@ -126,7 +130,7 @@ func (s *Server) list(id any) response {
 		tools = append(tools, map[string]any{
 			"name":        n,
 			"description": ref.t.Description,
-			"inputSchema": withAccountParam(ref.t.InputSchema),
+			"inputSchema": withAccountParam(ref.t.InputSchema, ref.t.Mutating),
 			"annotations": map[string]any{
 				"title":           ref.p.Manifest().Name + " · " + ref.t.Name,
 				"readOnlyHint":    readOnly,
@@ -140,7 +144,7 @@ func (s *Server) list(id any) response {
 
 // withAccountParam advertises the runtime-level _account_id argument so models
 // know they can route a call to a specific platform account.
-func withAccountParam(schema json.RawMessage) json.RawMessage {
+func withAccountParam(schema json.RawMessage, mutating bool) json.RawMessage {
 	var m map[string]any
 	if err := json.Unmarshal(schema, &m); err != nil || m == nil {
 		m = map[string]any{"type": "object"}
@@ -150,6 +154,9 @@ func withAccountParam(schema json.RawMessage) json.RawMessage {
 		props = map[string]any{}
 	}
 	props["_account_id"] = map[string]any{"type": "string", "description": "平台账号 ID，默认 default"}
+	if mutating {
+		props["_note"] = map[string]any{"type": "string", "description": "向确认人说明这项操作的依据"}
+	}
 	m["properties"] = props
 	if req, ok := m["required"]; ok && req == nil {
 		delete(m, "required")
@@ -219,6 +226,11 @@ func (s *Server) call(ctx context.Context, req request) (res response) {
 	if accountID == "" {
 		accountID = "default"
 	}
+	note := ""
+	if v, ok := rawArgs["_note"]; ok {
+		_ = json.Unmarshal(v, &note)
+		delete(rawArgs, "_note")
+	}
 	args, _ := json.Marshal(rawArgs)
 	manifest := ref.p.Manifest()
 	account := plugin.Account{PluginID: manifest.ID, AccountID: accountID}
@@ -228,10 +240,6 @@ func (s *Server) call(ctx context.Context, req request) (res response) {
 	}
 	started := time.Now()
 	defer func() {
-		if r := recover(); r != nil {
-			logger.Error("tool panicked", "tool", p.Name, "account", accountID, "panic", r, "stack", string(debug.Stack()))
-			res = toolError(req.ID, fmt.Errorf("工具执行异常: %v", r))
-		}
 		isErr := false
 		if m, ok := res.Result.(map[string]any); ok {
 			isErr, _ = m["isError"].(bool)
@@ -239,6 +247,30 @@ func (s *Server) call(ctx context.Context, req request) (res response) {
 		logger.Info("tool call", "tool", p.Name, "account", accountID, "mutating", ref.t.Mutating, "error", isErr || res.Error != nil, "duration", time.Since(started).Round(time.Millisecond))
 	}()
 
+	if ref.t.Mutating {
+		return s.proposeWrite(req, p.Name, ref, accountID, args, note)
+	}
+	result, err := s.invoke(ctx, ref, account, args, req.ID, p.Name)
+	if err != nil {
+		return toolError(req.ID, err)
+	}
+	return toolResult(req.ID, result)
+}
+
+// invoke runs a tool on its account's browser. Callers decide whether a call may
+// run at all: reads come straight from tools/call, writes only from Approve.
+func (s *Server) invoke(ctx context.Context, ref toolRef, account plugin.Account, args json.RawMessage, requestID any, name string) (result any, err error) {
+	logger := s.Logger
+	if logger == nil {
+		logger = DefaultLogger()
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Error("tool panicked", "tool", name, "account", account.AccountID, "panic", r, "stack", string(debug.Stack()))
+			err = fmt.Errorf("工具执行异常: %v", r)
+		}
+	}()
+	manifest := ref.p.Manifest()
 	if manifest.RequiresBrowser {
 		defer s.lockAccount(account)()
 	}
@@ -246,10 +278,8 @@ func (s *Server) call(ctx context.Context, req request) (res response) {
 	if os.Getenv("OMNIMCP_BROWSER_MODE") == "extension" && s.Extensions != nil && manifest.RequiresBrowser && manifest.BrowserMode != "managed" {
 		b = s.Extensions.Browser(account)
 	} else if s.Sessions != nil && manifest.RequiresBrowser {
-		var err error
-		b, err = s.Sessions.Get(account)
-		if err != nil {
-			return toolError(req.ID, err)
+		if b, err = s.Sessions.Get(account); err != nil {
+			return nil, err
 		}
 	} else {
 		b = s.Browser
@@ -258,25 +288,16 @@ func (s *Server) call(ctx context.Context, req request) (res response) {
 	if a, ok := b.(plugin.Auth); ok {
 		auth = a
 	}
-	confirm := s.Confirm
-	if confirm == nil {
-		confirm = func(context.Context, plugin.Tool, string) error { return nil }
-	}
-	c := &plugin.Context{Account: account, Browser: b, Auth: auth, Artifacts: s.Artifacts, Logger: logger, RequestID: req.ID, ToolName: p.Name, Confirm: func(ctx context.Context, name string) error { return confirm(ctx, ref.t, name) }}
-	if ref.t.Confirm {
-		if err := c.Confirm(ctx, p.Name); err != nil {
-			return toolError(req.ID, err)
-		}
-	}
+	c := &plugin.Context{Account: account, Browser: b, Auth: auth, Artifacts: s.Artifacts, Logger: logger, RequestID: requestID, ToolName: name}
 	callCtx, cancel := context.WithTimeout(ctx, toolTimeout(ref.t))
 	defer cancel()
-	result, err := ref.p.Execute(callCtx, c, ref.t.Name, args)
+	result, err = ref.p.Execute(callCtx, c, ref.t.Name, args)
 	if err != nil {
 		if callCtx.Err() == context.DeadlineExceeded {
-			err = fmt.Errorf("%w（超时 %s）", err, toolTimeout(ref.t))
+			err = fmt.Errorf("%w（超时 %s）: %w", err, toolTimeout(ref.t), context.DeadlineExceeded)
 		}
-		return toolError(req.ID, err)
+		return nil, err
 	}
-	return toolResult(req.ID, result)
+	return result, nil
 }
 func DefaultLogger() *slog.Logger { return slog.New(slog.NewTextHandler(os.Stderr, nil)) }

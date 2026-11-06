@@ -136,28 +136,7 @@ func (pl *Plugin) executeExtension(ctx context.Context, c *plugin.Context, name 
 		if err := p.Open(ctx, target); err != nil {
 			return nil, err
 		}
-		userRaw, err := p.PollGlobal(ctx, "__INITIAL_STATE__.user.userPageData", 10*time.Second, func(raw json.RawMessage) bool { return string(raw) != "null" })
-		if err != nil {
-			return nil, fmt.Errorf("读取用户主页失败: %w", err)
-		}
-		var page struct {
-			Interactions []engine.UserInteractions `json:"interactions"`
-			BasicInfo    engine.UserBasicInfo      `json:"basicInfo"`
-		}
-		if err := json.Unmarshal(userRaw, &page); err != nil {
-			return nil, err
-		}
-		out := engine.UserProfileResponse{UserBasicInfo: page.BasicInfo, Interactions: page.Interactions}
-		if notesRaw, err := p.ReadGlobal(ctx, "__INITIAL_STATE__.user.notes"); err == nil {
-			var notes [][]engine.Feed
-			if json.Unmarshal(notesRaw, &notes) == nil {
-				idx := map[engine.ProfileTab]int{engine.TabNotes: 0, engine.TabFavorites: 1, engine.TabLiked: 2}[tab]
-				if idx < len(notes) {
-					out.Feeds = notes[idx]
-				}
-			}
-		}
-		return out, nil
+		return p.readProfile(ctx, tab)
 
 	case "like_note", "favorite_note":
 		if err := p.Open(ctx, noteURL(in.FeedID, in.XSecToken)); err != nil {
@@ -170,32 +149,23 @@ func (pl *Plugin) executeExtension(ctx context.Context, c *plugin.Context, name 
 		return p.toggle(ctx, in.FeedID, selector, want, pick)
 
 	case "post_comment":
-		if err := p.Open(ctx, noteURL(in.FeedID, in.XSecToken)); err != nil {
-			return nil, err
-		}
-		if _, err := p.noteDetail(ctx, in.FeedID); err != nil {
-			return nil, err
-		}
-		if err := p.ClickElement(ctx, selCommentTrigger, plugin.ClickOptions{}); err != nil {
-			return nil, fmt.Errorf("未找到评论输入框，该笔记可能不允许评论: %w", err)
-		}
-		if err := p.WaitFor(ctx, selCommentInput, "", 5*time.Second); err != nil {
-			return nil, err
-		}
-		if err := p.TypeText(ctx, selCommentInput, in.Content); err != nil {
-			return nil, err
-		}
-		if err := p.ClickElement(ctx, selCommentSubmit, plugin.ClickOptions{}); err != nil {
-			return nil, err
-		}
-		if err := p.WaitFor(ctx, selComments, probe(in.Content), 10*time.Second); err != nil {
-			return nil, fmt.Errorf("已点击发送，但评论区未出现该评论（可能被审核拦截）: %w", err)
-		}
-		return map[string]any{"success": true, "verified": true}, nil
+		return p.postComment(ctx, in)
+
+	case "reply_comment":
+		return p.replyComment(ctx, in)
+
+	case "get_notifications":
+		return p.notifications(ctx, in.Tab, in.Limit)
+
+	case "get_unread_count":
+		return p.unreadCount(ctx)
+
+	case "get_my_account":
+		return p.myAccount(ctx)
 
 	case "publish_note", "publish_video":
 		draft, _ := plugin.ParseMode(in.Mode)
-		return p.publish(ctx, in, name == "publish_video", draft)
+		return p.publish(ctx, c, in, name == "publish_video", draft)
 	}
 	return nil, fmt.Errorf("unknown tool %q", name)
 }
@@ -257,7 +227,7 @@ func (pl *Plugin) loadMoreComments(ctx context.Context, p *extensionPage) {
 
 // publish fills the creator form for an image note or a video and then
 // either publishes it or saves it as a draft ("暂存离开").
-func (p *extensionPage) publish(ctx context.Context, in input, video, draft bool) (any, error) {
+func (p *extensionPage) publish(ctx context.Context, c *plugin.Context, in input, video, draft bool) (any, error) {
 	if err := p.Open(ctx, publishURL); err != nil {
 		return nil, err
 	}
@@ -314,6 +284,16 @@ func (p *extensionPage) publish(ctx context.Context, in input, video, draft bool
 	_ = p.PressKey(ctx, "Escape")
 	time.Sleep(time.Second)
 
+	if in.DeclareAI {
+		if err := p.declareAI(ctx); err != nil {
+			return nil, err
+		}
+	}
+	// Whatever went wrong while filling, the form must match what was approved.
+	if err := p.verifyForm(ctx, body, in); err != nil {
+		return nil, err
+	}
+
 	formURL, _ := p.CurrentURL(ctx)
 	status, texts := "published", []string{"发布成功"}
 	if draft {
@@ -328,7 +308,7 @@ func (p *extensionPage) publish(ctx context.Context, in input, video, draft bool
 	}
 	evidence, err := p.AwaitOutcome(ctx, formURL, true, texts, nil, 30*time.Second)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", plugin.ErrOutcomeUnknown, err)
 	}
 	out := map[string]any{"status": status, "title": in.Title, "evidence": evidence}
 	if video {
@@ -336,7 +316,40 @@ func (p *extensionPage) publish(ctx context.Context, in input, video, draft bool
 	} else {
 		out["image_count"] = len(in.Images)
 	}
+	if !draft {
+		addNoteReceipt(ctx, c, out, in.Title)
+	}
 	return out, nil
+}
+
+// declareAI picks the platform's AI declaration. The platform limits undeclared
+// AI content, so a declaration that cannot be set stops the publish.
+func (p *extensionPage) declareAI(ctx context.Context) error {
+	if _, err := plugin.ClickFirst(ctx, p.Page, []plugin.ClickTarget{{Selector: ".d-select-placeholder", Text: "添加内容类型声明", Exact: true}}, 5*time.Second); err != nil {
+		return fmt.Errorf("设置 AI 声明失败，已中止发布: %w", err)
+	}
+	if _, err := plugin.ClickFirst(ctx, p.Page, []plugin.ClickTarget{{Selector: ".d-option", Text: "笔记含AI合成内容", Exact: true}}, 5*time.Second); err != nil {
+		return fmt.Errorf("设置 AI 声明失败，已中止发布: %w", err)
+	}
+	return nil
+}
+
+func (p *extensionPage) verifyForm(ctx context.Context, bodySelector string, in input) error {
+	title, err := p.Query(ctx, selPublishTitle)
+	if err != nil {
+		return fmt.Errorf("读回标题失败，已中止发布: %w", err)
+	}
+	if !engine.SameText(title.Text, in.Title) {
+		return fmt.Errorf("表单标题与确认内容不一致，已中止发布：%q", title.Text)
+	}
+	body, err := p.Query(ctx, bodySelector)
+	if err != nil {
+		return fmt.Errorf("读回正文失败，已中止发布: %w", err)
+	}
+	if !engine.SameText(body.Text, in.Content) {
+		return fmt.Errorf("表单正文与确认内容不一致，已中止发布，没有提交")
+	}
+	return nil
 }
 
 func (p *extensionPage) waitPreviews(ctx context.Context, n int, timeout time.Duration) error {

@@ -53,6 +53,7 @@ func main() {
 	}
 	for _, p := range []*domestic.Plugin{
 		domestic.New(domestic.Config{ID: "douyin", Name: "抖音", Host: "www.douyin.com",
+			CreatorAccount: true,
 			SearchTemplate: "https://www.douyin.com/search/%s", DetailTemplate: "https://www.douyin.com/video/%s",
 			LikeSelectors: []string{"[data-e2e='video-player-digg']"},
 			// Douyin submits on Enter, which PostComment falls back to.
@@ -108,7 +109,18 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	s := &core.Server{Registry: r, Logger: core.DefaultLogger(), Sessions: sessions, Extensions: core.NewExtensionManager(), Artifacts: artifacts}
+	approvals, err := core.NewApprovalStore(dataDir)
+	if err != nil {
+		panic(err)
+	}
+	if err := r.Register(core.NewApprovalsPlugin(approvals)); err != nil {
+		panic(err)
+	}
+	auto, err := core.ParseAutoPolicy(os.Getenv("OMNIMCP_AUTO_APPROVE"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	s := &core.Server{Registry: r, Logger: core.DefaultLogger(), Sessions: sessions, Extensions: core.NewExtensionManager(), Artifacts: artifacts, Approvals: approvals, Auto: auto}
 	addr := os.Getenv("OMNIMCP_WEB_ADDR")
 	if addr == "" {
 		addr = "127.0.0.1:8090"

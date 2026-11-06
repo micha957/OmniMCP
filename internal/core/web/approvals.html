@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>待确认操作 · OmniMCP</title>
+<style>
+:root{color-scheme:light dark;--bg:#f6f5f2;--card:#fff;--text:#1d1c1a;--muted:#6b6862;--line:#e3e0d9;--accent:#b4332a;--good:#1f7a4d;--warn:#a15c00;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif;line-height:1.55}
+@media (prefers-color-scheme:dark){:root{--bg:#161513;--card:#201f1c;--text:#ece9e2;--muted:#a09c93;--line:#35332e;--accent:#e2665b;--good:#5cc08c;--warn:#e0a24a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text)}main{max-width:760px;margin:0 auto;padding:20px 16px 64px}
+h1{font-size:22px;margin:0 0 4px}.sub{color:var(--muted);font-size:14px}.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0}
+button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:8px;padding:7px 12px;cursor:pointer;min-height:38px}button.on{border-color:var(--text);font-weight:600}button.primary{background:var(--accent);border-color:var(--accent);color:#fff}button:disabled{opacity:.5;cursor:default}
+article{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}.top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--muted)}h2{font-size:16px;margin:8px 0}
+.st{font-weight:600}.st.succeeded{color:var(--good)}.st.failed,.st.rejected{color:var(--accent)}.st.unknown,.st.executing{color:var(--warn)}
+dl{margin:8px 0;display:grid;gap:8px}dt{font-size:12px;color:var(--muted)}dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+textarea{width:100%;font:13px/1.5 ui-monospace,Menlo,monospace;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;min-height:160px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.warn{background:color-mix(in srgb,var(--warn) 14%,transparent);border-radius:8px;padding:8px 10px;font-size:14px;margin-top:8px}.err{color:var(--accent);overflow-wrap:anywhere}
+.note{font-size:14px;color:var(--muted);border-left:3px solid var(--line);padding-left:8px;margin:8px 0}#msg{position:fixed;left:16px;right:16px;bottom:16px;max-width:728px;margin:auto;background:var(--text);color:var(--bg);border-radius:8px;padding:10px 12px;font-size:14px}#msg:empty{display:none}
+#auth{display:flex;gap:8px;margin:12px 0}#auth[hidden]{display:none}#auth input{flex:1;min-width:0;font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text)}
+</style>
+</head>
+<body>
+<main>
+<h1>待确认操作</h1>
+<div class="sub">AI 提出的平台操作都在这里。只有你确认后才会执行，执行的就是你看到的内容。</div>
+<div id="auth" hidden><input id="token" type="password" placeholder="确认口令（OMNIMCP_APPROVAL_TOKEN）" autocomplete="off"><button id="save">使用</button></div>
+<div class="tabs" id="tabs"></div>
+<div id="list"></div>
+</main>
+<div id="msg" role="status"></div>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const TABS=[['pending','待确认'],['executing','执行中'],['unknown','结果不明'],['failed','失败'],['succeeded','已成功'],['rejected','已驳回'],['expired','已过期']];
+const FIELD={title:'标题',content:'正文',description:'正文',caption:'文案',feed_id:'笔记',comment_id:'回复的评论',video:'视频',file_path:'文件',images:'图片',mode:'方式',visibility:'可见范围',url:'目标链接',aid:'视频',id:'目标',root:'根评论',parent:'父评论',tags:'标签',reply_to:'回复对象'};
+const HIDDEN=new Set(['xsec_token']);
+let tab='pending',editing=null,token='';
+try{token=sessionStorage.getItem('approval-token')||''}catch{}
+function h(t,a={},...c){const n=document.createElement(t);for(const[k,v]of Object.entries(a)){if(k.startsWith('on'))n.addEventListener(k.slice(2),v);else if(k==='value')n.value=v;else if(v!==false&&v!=null)n.setAttribute(k,v===true?'':v)}for(const x of c.flat(9))if(x!=null)n.append(x instanceof Node?x:String(x));return n}
+function say(s){$('msg').textContent=s;clearTimeout(say.t);say.t=setTimeout(()=>$('msg').textContent='',5000)}
+async function api(path,method='GET',body){const headers={};if(body!==undefined)headers['Content-Type']='application/json';if(token)headers.Authorization='Bearer '+token;const r=await fetch(path,{method,headers,body:body===undefined?undefined:JSON.stringify(body)});const out=await r.json().catch(()=>({}));if(r.status===401)$('auth').hidden=false;if(!r.ok)throw new Error(out.error||'操作未完成');return out}
+function when(v){return v?new Date(v).toLocaleString('zh-CN',{hour12:false}):''}
+function act(label,fn,cls){return h('button',{class:cls,onclick:async e=>{const b=e.currentTarget;b.disabled=true;try{await fn();await load()}catch(err){say(err.message)}finally{b.disabled=false}}},label)}
+function fields(a){return Object.entries(a.args||{}).filter(([k])=>!HIDDEN.has(k)).map(([k,v])=>[h('dt',{},FIELD[k]||k),h('dd',{},Array.isArray(v)?v.join('\n'):typeof v==='object'?JSON.stringify(v,null,2):String(v))])}
+function card(a){
+  const isEdit=editing===a.id;
+  const body=isEdit?h('textarea',{id:'edit-'+a.id,value:JSON.stringify(a.args,null,2)}):h('dl',{},fields(a));
+  const buttons=[];
+  if(a.status==='pending'){
+    if(isEdit){buttons.push(act('保存修改',async()=>{let args;try{args=JSON.parse($('edit-'+a.id).value)}catch{throw new Error('内容不是有效的 JSON')}await api('/api/approvals/'+a.id,'PATCH',{args});editing=null;say('已保存，请再看一遍后确认')},'primary'),h('button',{onclick:()=>{editing=null;load()}},'取消'))}
+    else buttons.push(act('确认执行',async()=>{await api('/api/approvals/'+a.id+'/approve','POST',{hash:a.hash});say('已确认，正在执行')},'primary'),h('button',{onclick:()=>{editing=a.id;load()}},'修改'),act('驳回',async()=>{const reason=prompt('驳回原因（会告知 AI，可留空）','');if(reason===null)return;await api('/api/approvals/'+a.id+'/reject','POST',{reason});say('已驳回')}))
+  }
+  if(a.status==='unknown'||a.status==='failed'){buttons.push(act('已核对，重新执行',async()=>{if(!confirm('确定重新执行？如果上次其实已生效，内容会重复出现。'))return;await api('/api/approvals/'+a.id+'/retry','POST',{hash:a.hash});say('已重新开始')}),act('不再执行',async()=>{await api('/api/approvals/'+a.id+'/reject','POST',{reason:'确认后不再执行'});say('已关闭')}))}
+  return h('article',{},h('div',{class:'top'},h('span',{},a.plugin_id+' · 账号 '+a.account_id),h('span',{class:'st '+a.status},(TABS.find(t=>t[0]===a.status)||[0,a.status])[1])),h('h2',{},a.tool),a.note?h('div',{class:'note'},a.note):null,body,a.edited?h('div',{class:'sub'},'内容已被你修改'):null,a.status==='unknown'?h('div',{class:'warn'},'可能已经在平台生效。请先打开平台核对，不要直接重试。'):null,a.error?h('div',{class:'err'},a.error):null,a.result?h('details',{},h('summary',{class:'sub'},'平台回执'),h('dd',{},JSON.stringify(a.result,null,2))):null,a.reason?h('div',{class:'sub'},'驳回原因：'+a.reason):null,h('div',{class:'sub'},'提出于 '+when(a.created_at)+(a.finished_at?' · 结束于 '+when(a.finished_at):'')),h('div',{class:'row'},buttons));
+}
+async function load(){
+  $('tabs').replaceChildren(...TABS.map(([id,label])=>h('button',{class:tab===id?'on':'',onclick:()=>{tab=id;editing=null;load()}},label)));
+  const {items}=await api('/api/approvals?status='+tab);
+  $('list').replaceChildren(...(items.length?items.map(card):[h('p',{class:'sub'},'这里现在没有内容。')]));
+}
+$('save').addEventListener('click',()=>{token=$('token').value.trim();try{sessionStorage.setItem('approval-token',token)}catch{}$('auth').hidden=true;load().catch(e=>say(e.message))});
+load().catch(e=>say(e.message));
+setInterval(()=>{if(editing===null&&!document.hidden)load().catch(()=>{})},4000);
+</script>
+</body>
+</html>

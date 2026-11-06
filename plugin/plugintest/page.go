@@ -16,18 +16,19 @@ import (
 // the maps up front and may mutate state from OnClick to model page reactions.
 // It is not safe for concurrent use.
 type Page struct {
-	URL      string
-	Text     string                        // body text for Snapshot / WaitFor("", text)
-	Globals  map[string]string             // ReadGlobal path -> JSON
-	Scripts  map[string]string             // ReadScriptJSON selector -> JSON
-	Elements map[string]plugin.ElementInfo // Query selector -> result
-	Lists    map[string][]map[string]string
-	OnClick  func(p *Page, selector string, opt plugin.ClickOptions) error
-	Clicks   []string
-	Typed    map[string]string
-	Keys     []string
-	Uploads  []string
-	Opened   []string
+	URL        string
+	Text       string                        // body text for Snapshot / WaitFor("", text)
+	Globals    map[string]string             // ReadGlobal path -> JSON
+	Scripts    map[string]string             // ReadScriptJSON selector -> JSON
+	Elements   map[string]plugin.ElementInfo // Query selector -> result
+	Lists      map[string][]map[string]string
+	OnClick    func(p *Page, selector string, opt plugin.ClickOptions) error
+	TypeMangle func(string) string
+	Clicks     []string
+	Typed      map[string]string
+	Keys       []string
+	Uploads    []string
+	Opened     []string
 }
 
 func New() *Page {
@@ -95,8 +96,20 @@ func (p *Page) ClickElement(_ context.Context, sel string, opt plugin.ClickOptio
 	}
 	return nil
 }
-func (p *Page) TypeText(_ context.Context, sel, v string) error { p.Typed[sel] = v; return nil }
-func (p *Page) PressKey(_ context.Context, k string) error      { p.Keys = append(p.Keys, k); return nil }
+
+// TypeText also updates Query's text, as a real form would; set TypeMangle to
+// model an editor that stores something other than what was typed.
+func (p *Page) TypeText(_ context.Context, sel, v string) error {
+	p.Typed[sel] = v
+	info := p.Elements[sel]
+	info.Text = v
+	if p.TypeMangle != nil {
+		info.Text = p.TypeMangle(v)
+	}
+	p.Elements[sel] = info
+	return nil
+}
+func (p *Page) PressKey(_ context.Context, k string) error { p.Keys = append(p.Keys, k); return nil }
 func (p *Page) Upload(_ context.Context, _, path string) error {
 	p.Uploads = append(p.Uploads, path)
 	return nil

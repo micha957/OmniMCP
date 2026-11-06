@@ -33,12 +33,12 @@ func (*Plugin) Manifest() plugin.Manifest {
 func (*Plugin) Tools() []plugin.Tool {
 	return []plugin.Tool{
 		{Name: "get_access_token", Description: "获取公众号 AccessToken", InputSchema: plugin.ToolSchema(`{}`, nil)},
-		{Name: "upload_image", Description: "上传正文图片并返回微信图片 URL", InputSchema: plugin.ToolSchema(`{"file_path":{"type":"string"}}`, []string{"file_path"})},
-		{Name: "create_draft", Description: "创建微信公众号图文草稿", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"title":{"type":"string","maxLength":64},"content":{"type":"string"},"cover_path":{"type":"string"},"cover_media_id":{"type":"string"},"author":{"type":"string"},"digest":{"type":"string","maxLength":120},"content_source_url":{"type":"string"},"need_open_comment":{"type":"boolean"},"only_fans_can_comment":{"type":"boolean"}}`, []string{"title", "content"})},
+		{Name: "upload_image", Description: "上传正文图片并返回微信图片 URL", Mutating: true, InputSchema: plugin.ToolSchema(`{"file_path":{"type":"string"}}`, []string{"file_path"})},
+		{Name: "create_draft", Description: "创建微信公众号图文草稿", Mutating: true, InputSchema: plugin.ToolSchema(`{"title":{"type":"string","maxLength":64},"content":{"type":"string"},"cover_path":{"type":"string"},"cover_media_id":{"type":"string"},"author":{"type":"string"},"digest":{"type":"string","maxLength":120},"content_source_url":{"type":"string"},"need_open_comment":{"type":"boolean"},"only_fans_can_comment":{"type":"boolean"}}`, []string{"title", "content"})},
 		{Name: "list_drafts", Description: "分页获取公众号草稿", InputSchema: plugin.ToolSchema(`{"offset":{"type":"integer"},"count":{"type":"integer","minimum":1,"maximum":20}}`, nil)},
 		{Name: "get_draft", Description: "获取公众号草稿详情", InputSchema: plugin.ToolSchema(`{"media_id":{"type":"string"}}`, []string{"media_id"})},
-		{Name: "delete_draft", Description: "删除公众号草稿", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"media_id":{"type":"string"}}`, []string{"media_id"})},
-		{Name: "publish_draft", Description: "发布一篇草稿（发布能力，不推送给粉丝），返回 publish_id；用 get_publish_status 查结果。需要公众号已开通发布接口权限", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"media_id":{"type":"string"}}`, []string{"media_id"})},
+		{Name: "delete_draft", Description: "删除公众号草稿", Mutating: true, InputSchema: plugin.ToolSchema(`{"media_id":{"type":"string"}}`, []string{"media_id"})},
+		{Name: "publish_draft", Description: "发布一篇草稿（发布能力，不推送给粉丝），返回 publish_id；用 get_publish_status 查结果。需要公众号已开通发布接口权限", Mutating: true, InputSchema: plugin.ToolSchema(`{"media_id":{"type":"string"}}`, []string{"media_id"})},
 		{Name: "get_publish_status", Description: "查询发布任务状态，成功时返回文章链接", InputSchema: plugin.ToolSchema(`{"publish_id":{"type":"string"}}`, []string{"publish_id"})},
 	}
 }

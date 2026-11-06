@@ -6,35 +6,44 @@ import (
 	"fmt"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/input"
-	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/heybox/omnimcp/plugin"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
 
-// RodBrowser is the shared Chromium implementation. Profiles are isolated per account.
+// RodBrowser drives one tab of the shared browser.
 type RodBrowser struct {
-	browser *rod.Browser
-	page    *rod.Page
+	browser      *rod.Browser
+	page         *rod.Page
+	onTabCreated func(string)
 }
 
 func (b *RodBrowser) Page() *rod.Page { return b.page }
 
-func (b *RodBrowser) OpenLogin(ctx context.Context, url string) error { return b.Open(ctx, url) }
+// OpenLogin shows the login page in front, since the person has to act on it.
+func (b *RodBrowser) OpenLogin(ctx context.Context, url string) error {
+	if err := b.Open(ctx, url); err != nil {
+		return err
+	}
+	_, err := b.page.Activate()
+	return err
+}
 
-// CookieHeader returns cookies currently stored in this account's Chromium
-// profile. It is used by API plugins that need a browser-authenticated session.
+// CookieHeader returns one site's cookies. It is used by API plugins that need a
+// browser-authenticated session. All platforms share this browser's cookie jar,
+// so the domain is required: a plugin must never receive another site's login.
 func (b *RodBrowser) CookieHeader(ctx context.Context, domain string) (string, error) {
+	if domain == "" {
+		return "", fmt.Errorf("cookie domain is required")
+	}
 	cookies, err := b.browser.GetCookies()
 	if err != nil {
 		return "", err
 	}
 	parts := make([]string, 0, len(cookies))
 	for _, c := range cookies {
-		if domain != "" && !strings.Contains(c.Domain, domain) {
+		if d := strings.TrimPrefix(c.Domain, "."); d != domain && !strings.HasSuffix(d, "."+domain) {
 			continue
 		}
 		parts = append(parts, c.Name+"="+c.Value)
@@ -42,34 +51,23 @@ func (b *RodBrowser) CookieHeader(ctx context.Context, domain string) (string, e
 	return strings.Join(parts, "; "), nil
 }
 
-func NewRodBrowser(headless bool, dataDir, account string) (*RodBrowser, error) {
-	if dataDir == "" {
-		dataDir = "data"
-	}
-	profile := filepath.Join(dataDir, "profiles", account)
-	if err := os.MkdirAll(profile, 0o700); err != nil {
-		return nil, err
-	}
-	u, err := launcher.New().UserDataDir(profile).Headless(headless).Leakless(false).Launch()
-	if err != nil {
-		return nil, fmt.Errorf("launch chromium: %w", err)
-	}
-	b := rod.New().ControlURL(u)
-	if err := b.Connect(); err != nil {
-		return nil, err
-	}
-	return &RodBrowser{browser: b}, nil
-}
-
-// Open navigates the account's single working tab, creating it on first use,
-// so repeated calls do not accumulate tabs.
+// Open navigates this platform's single tab, creating it on first use and again
+// if the person closed it, so repeated calls do not accumulate tabs.
 func (b *RodBrowser) Open(ctx context.Context, url string) error {
+	if b.page != nil {
+		if _, err := (proto.TargetGetTargetInfo{TargetID: b.page.TargetID}).Call(b.browser.Context(ctx)); err != nil {
+			b.page = nil
+		}
+	}
 	if b.page == nil {
 		p, err := b.browser.Page(proto.TargetCreateTarget{URL: "about:blank"})
 		if err != nil {
 			return err
 		}
-		b.page = p
+		b.page = keepActive(p)
+		if b.onTabCreated != nil {
+			b.onTabCreated(string(p.TargetID))
+		}
 	}
 	p := b.page.Context(ctx).Timeout(30 * time.Second)
 	if err := p.Navigate(url); err != nil {
@@ -366,10 +364,3 @@ var _ plugin.TrustedInput = (*RodBrowser)(nil)
 var _ plugin.Inspector = (*RodBrowser)(nil)
 var _ plugin.StateReader = (*RodBrowser)(nil)
 var _ plugin.Uploader = (*RodBrowser)(nil)
-
-func (b *RodBrowser) Close() error {
-	if b.browser == nil {
-		return nil
-	}
-	return b.browser.Close()
-}

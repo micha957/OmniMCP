@@ -2,8 +2,11 @@
 data/accounts.json
 data/profiles/
 data/artifacts/
+data/agentops/
+data/approvals.json
 .env
 .DS_Store
 /bin/
 /dist/
 *.test
+.claude/

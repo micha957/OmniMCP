@@ -19,6 +19,9 @@ func (*Plugin) Manifest() plugin.Manifest {
 }
 func (*Plugin) Tools() []plugin.Tool {
 	return []plugin.Tool{
+		{Name: "check_login", Description: "检查知乎登录状态，返回当前用户", InputSchema: plugin.ToolSchema(`{}`, nil)},
+		{Name: "get_notifications", Description: "读取评论和回复通知。complete=false 表示还有更早的通知未读取", InputSchema: plugin.ToolSchema(`{"limit":{"type":"integer","minimum":1,"maximum":50}}`, nil)},
+		{Name: "get_my_account", Description: "读取当前账号粉丝、获赞数据，以及最近回答和文章的赞同、评论数", InputSchema: plugin.ToolSchema(`{}`, nil)},
 		{Name: "author_scan", Description: "滚动加载作者文章目录，每轮最多20秒；continue=true继续同一目录页，返回总数与覆盖状态", InputSchema: plugin.ToolSchema(`{"url":{"type":"string"},"continue":{"type":"boolean"}}`, []string{"url"})},
 		{Name: "author_posts", Description: "读取知乎作者当前已加载文章目录；有界采样，不宣称全量", InputSchema: plugin.ToolSchema(`{"url":{"type":"string"},"limit":{"type":"integer","minimum":1,"maximum":100}}`, []string{"url"})},
 		{Name: "article_detail", Description: "读取专栏文章完整 DOM 正文、段落、图片链接、时间和完整性信号", InputSchema: plugin.ToolSchema(`{"url":{"type":"string"}}`, []string{"url"})},
@@ -26,13 +29,13 @@ func (*Plugin) Tools() []plugin.Tool {
 		{Name: "open", Description: "打开知乎网页", InputSchema: plugin.ToolSchema(`{"url":{"type":"string"}}`, []string{"url"})},
 		{Name: "snapshot", Description: "读取当前知乎页面", InputSchema: plugin.ToolSchema(`{}`, nil)},
 		{Name: "get_detail", Description: "读取知乎问题、回答或文章页面；传 url，或传问题 id", InputSchema: plugin.ToolSchema(`{"url":{"type":"string"},"id":{"type":"string","description":"问题 ID"}}`, nil)},
-		{Name: "like", Description: "赞同知乎回答或文章（页面上第一个赞同按钮），并确认按钮变为已赞同", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"url":{"type":"string"},"id":{"type":"string","description":"问题 ID"}}`, nil)},
-		{Name: "comment", Description: "评论知乎回答或文章，提交后确认评论出现", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"url":{"type":"string"},"id":{"type":"string","description":"问题 ID"},"content":{"type":"string"}}`, []string{"content"})},
+		{Name: "like", Description: "赞同知乎回答或文章（页面上第一个赞同按钮），并确认按钮变为已赞同", Mutating: true, InputSchema: plugin.ToolSchema(`{"url":{"type":"string"},"id":{"type":"string","description":"问题 ID"}}`, nil)},
+		{Name: "comment", Description: "评论知乎回答或文章，提交后确认评论出现", Mutating: true, InputSchema: plugin.ToolSchema(`{"url":{"type":"string"},"id":{"type":"string","description":"问题 ID"},"content":{"type":"string"}}`, []string{"content"})},
 		{Name: "editor_snapshot", Description: "读取知乎文章编辑器状态", InputSchema: plugin.ToolSchema(`{}`, nil)},
-		{Name: "fill_article", Description: "在当前已打开的知乎编辑器里填写标题和正文，不提交", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"title":{"type":"string","maxLength":100},"content":{"type":"string"}}`, []string{"title", "content"})},
-		{Name: "publish_article", Description: "写一篇知乎专栏文章：mode=draft 保存为草稿（编辑器自动保存），mode=publish 直接发布。返回文章链接", Mutating: true, Confirm: true, Timeout: 3 * time.Minute, InputSchema: plugin.ToolSchema(`{"title":{"type":"string","maxLength":100},"content":{"type":"string"},"mode":{"type":"string","enum":["publish","draft"]}}`, []string{"title", "content", "mode"})},
-		{Name: "click", Description: "点击知乎当前页面元素", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"selector":{"type":"string"}}`, []string{"selector"})},
-		{Name: "fill", Description: "填写知乎当前页面元素", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"selector":{"type":"string"},"value":{"type":"string"}}`, []string{"selector", "value"})},
+		{Name: "fill_article", Description: "在当前已打开的知乎编辑器里填写标题和正文，不提交", Mutating: true, InputSchema: plugin.ToolSchema(`{"title":{"type":"string","maxLength":100},"content":{"type":"string"}}`, []string{"title", "content"})},
+		{Name: "publish_article", Description: "写一篇知乎专栏文章：mode=draft 保存为草稿（编辑器自动保存），mode=publish 直接发布。返回文章链接", Mutating: true, Timeout: 3 * time.Minute, InputSchema: plugin.ToolSchema(`{"title":{"type":"string","maxLength":100},"content":{"type":"string"},"mode":{"type":"string","enum":["publish","draft"]}}`, []string{"title", "content", "mode"})},
+		{Name: "click", Description: "点击知乎当前页面元素", Mutating: true, InputSchema: plugin.ToolSchema(`{"selector":{"type":"string"}}`, []string{"selector"})},
+		{Name: "fill", Description: "填写知乎当前页面元素", Mutating: true, InputSchema: plugin.ToolSchema(`{"selector":{"type":"string"},"value":{"type":"string"}}`, []string{"selector", "value"})},
 	}
 }
 
@@ -48,6 +51,19 @@ func (p *Plugin) Execute(ctx context.Context, c *plugin.Context, name string, ra
 		return nil, err
 	}
 	switch name {
+	case "check_login":
+		u, err := checkLogin(ctx, c)
+		if err != nil {
+			return nil, err
+		}
+		if u == nil {
+			return map[string]any{"logged_in": false}, nil
+		}
+		return map[string]any{"logged_in": true, "user": map[string]string{"user_id": u.ID, "nickname": u.Name}}, nil
+	case "get_notifications":
+		return notifications(ctx, c, in.Limit)
+	case "get_my_account":
+		return myAccount(ctx, c)
 	case "author_scan":
 		_, target, err := collectionTarget("author_posts", in.URL)
 		if err != nil {
@@ -313,11 +329,11 @@ func publishArticle(ctx context.Context, b plugin.Browser, in input) (any, error
 		return nil, fmt.Errorf("没有找到发布按钮: %w", err)
 	}
 	if _, err := page.AwaitOutcome(ctx, draftURL, true, nil, nil, publishWait); err != nil {
-		return nil, fmt.Errorf("点击发布后页面没有跳转到文章页（可能需要在发布设置里补充话题，草稿已保存在 %s）: %w", draftURL, err)
+		return nil, fmt.Errorf("点击发布后页面没有跳转到文章页（可能需要在发布设置里补充话题，草稿已保存在 %s）: %w: %w", draftURL, plugin.ErrOutcomeUnknown, err)
 	}
 	u, _ := page.CurrentURL(ctx)
 	if parsed, err := url.Parse(u); err != nil || !articlePath.MatchString(parsed.Path) || strings.HasSuffix(strings.TrimRight(parsed.Path, "/"), "/edit") {
-		return nil, fmt.Errorf("发布后跳转到了意外的页面 %s", u)
+		return nil, fmt.Errorf("发布后跳转到了意外的页面 %s: %w", u, plugin.ErrOutcomeUnknown)
 	}
 	return map[string]any{"success": true, "status": "published", "url": u}, nil
 }

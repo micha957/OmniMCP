@@ -103,5 +103,5 @@ func verifyPosted(ctx context.Context, in Inspector, input, content string, time
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	return fmt.Errorf("已提交，但未在页面上确认到该评论（可能被审核拦截或提交失败）")
+	return fmt.Errorf("已提交，但未在页面上确认到该评论（可能被审核拦截或提交失败）: %w", ErrOutcomeUnknown)
 }

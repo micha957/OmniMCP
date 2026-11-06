@@ -28,9 +28,9 @@ func (*Plugin) Tools() []plugin.Tool {
 		{Name: "get_video", Description: "获取视频详情：文案、作者、时长、播放/点赞/评论/分享/收藏数、音乐、话题", InputSchema: plugin.ToolSchema(`{"url":{"type":"string","description":"视频链接（含短链）"}}`, []string{"url"})},
 		{Name: "get_comments", Description: "读取视频一级评论，滚动加载到 limit 条", Timeout: 3 * time.Minute, InputSchema: plugin.ToolSchema(`{"url":{"type":"string"},"limit":{"type":"integer","minimum":1,"maximum":500}}`, []string{"url"})},
 		{Name: "get_user", Description: "获取用户资料（粉丝、获赞、作品数）和作品列表；user 可为用户名、@用户名或主页链接", Timeout: 3 * time.Minute, InputSchema: plugin.ToolSchema(`{"user":{"type":"string"},"limit":{"type":"integer","minimum":1,"maximum":300,"description":"作品数量，默认 30"}}`, []string{"user"})},
-		{Name: "like_video", Description: "点赞或取消点赞（unlike=true），以按钮状态确认结果", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"url":{"type":"string"},"unlike":{"type":"boolean"}}`, []string{"url"})},
-		{Name: "post_comment", Description: "在视频下发表评论，并确认评论出现", Mutating: true, Confirm: true, InputSchema: plugin.ToolSchema(`{"url":{"type":"string"},"content":{"type":"string","maxLength":150}}`, []string{"url", "content"})},
-		{Name: "publish_video", Description: "通过 TikTok Studio 上传视频：mode=publish 直接发布（公开范围用账号默认设置），mode=draft 存为草稿。file_path 为本机视频绝对路径", Mutating: true, Confirm: true, Timeout: 20 * time.Minute, InputSchema: plugin.ToolSchema(`{"file_path":{"type":"string"},"caption":{"type":"string","maxLength":2200},"mode":{"type":"string","enum":["publish","draft"]}}`, []string{"file_path", "caption", "mode"})},
+		{Name: "like_video", Description: "点赞或取消点赞（unlike=true），以按钮状态确认结果", Mutating: true, InputSchema: plugin.ToolSchema(`{"url":{"type":"string"},"unlike":{"type":"boolean"}}`, []string{"url"})},
+		{Name: "post_comment", Description: "在视频下发表评论，并确认评论出现", Mutating: true, InputSchema: plugin.ToolSchema(`{"url":{"type":"string"},"content":{"type":"string","maxLength":150}}`, []string{"url", "content"})},
+		{Name: "publish_video", Description: "通过 TikTok Studio 上传视频：mode=publish 直接发布（公开范围用账号默认设置），mode=draft 存为草稿。file_path 为本机视频绝对路径", Mutating: true, Timeout: 20 * time.Minute, InputSchema: plugin.ToolSchema(`{"file_path":{"type":"string"},"caption":{"type":"string","maxLength":2200},"mode":{"type":"string","enum":["publish","draft"]}}`, []string{"file_path", "caption", "mode"})},
 	}
 }
 
